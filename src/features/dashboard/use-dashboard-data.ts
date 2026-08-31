@@ -48,7 +48,7 @@ export function useBossDashboardData() {
       const { data, error } = await supabase
         .from("dispatches")
         .select(`
-          id, created_at, status, total_value, from_location_type,
+          id, created_at, status, total_value, from_location_type, to_location_type, to_store_id,
           dispatch_items(quantity)
         `)
         .gte("created_at", thirtyDaysAgo.toISOString());
@@ -65,7 +65,9 @@ export function useBossDashboardData() {
         .from("inventory_balances")
         .select(`
           quantity,
-          products ( id, name, unit_value )
+          store_id,
+          products ( id, name, unit_value ),
+          store:stores(name)
         `);
       if (error) throw error;
       return data;
@@ -289,22 +291,59 @@ export function useBossDashboardData() {
   recentActivity.sort((a, b) => b.timestamp - a.timestamp);
   recentActivity = recentActivity.slice(0, 8); // top 8 activities
 
-  // Agrupar ventas por tienda (solo hoy para la lista estilo "PAYMENTS")
-  const storeSalesMap = new Map<string, { id: string; name: string; total: number }>();
+  // Agrupar ventas, inventario y despachos por tienda
+  const storeDetailsMap = new Map<string, { id: string; name: string; sales: number; inventory: number; dispatchedItems: number }>();
+  
+  // Agregar ventas por tienda
   salesData.forEach((entry: any) => {
     const time = new Date(entry.created_at).getTime();
     if (time >= startOfToday && entry.store_id) {
       const storeName = entry.store?.name || 'Tienda Desconocida';
       const amount = Number(entry.amount);
-      const existing = storeSalesMap.get(entry.store_id);
+      const existing = storeDetailsMap.get(entry.store_id);
       if (existing) {
-        existing.total += amount;
+        existing.sales += amount;
       } else {
-        storeSalesMap.set(entry.store_id, { id: entry.store_id, name: storeName, total: amount });
+        storeDetailsMap.set(entry.store_id, { id: entry.store_id, name: storeName, sales: amount, inventory: 0, dispatchedItems: 0 });
       }
     }
   });
-  const storeSales = Array.from(storeSalesMap.values()).sort((a, b) => b.total - a.total);
+
+  // Agregar inventario por tienda
+  rawInventory.forEach((row: any) => {
+    if (row.store_id) {
+      const qty = Number(row.quantity);
+      const existing = storeDetailsMap.get(row.store_id);
+      if (existing) {
+        existing.inventory += qty;
+      } else {
+        // Necesitamos el nombre de la tienda, si no está en ventas, lo ponemos genérico (lo ideal sería haber traido stores.name en inventoryQuery, pero no lo tenemos. Usaremos "Tienda" por ahora o lo que haya)
+        storeDetailsMap.set(row.store_id, { id: row.store_id, name: `Tienda ${row.store_id.slice(0, 4)}`, sales: 0, inventory: qty, dispatchedItems: 0 });
+      }
+    }
+  });
+
+  // Agregar despachos hacia tiendas
+  dispatchesData.forEach((entry: any) => {
+    const time = new Date(entry.created_at).getTime();
+    if (time >= startOfToday && entry.to_location_type === 'store' && entry.to_store_id) {
+      let itemsCount = 0;
+      if (entry.dispatch_items && Array.isArray(entry.dispatch_items)) {
+        entry.dispatch_items.forEach((item: any) => {
+          itemsCount += Number(item.quantity || 0);
+        });
+      }
+      
+      const existing = storeDetailsMap.get(entry.to_store_id);
+      if (existing) {
+        existing.dispatchedItems += itemsCount;
+      } else {
+        storeDetailsMap.set(entry.to_store_id, { id: entry.to_store_id, name: `Tienda ${entry.to_store_id.slice(0, 4)}`, sales: 0, inventory: 0, dispatchedItems: itemsCount });
+      }
+    }
+  });
+
+  const storeSales = Array.from(storeDetailsMap.values()).sort((a, b) => b.sales - a.sales);
 
   return {
     salesToday,
