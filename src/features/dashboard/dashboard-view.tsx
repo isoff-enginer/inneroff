@@ -38,7 +38,7 @@ export function DashboardView() {
 
       <section aria-label="Resumen de operación" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {MOCK_STATS.map((stat, index) => (
-          <StatCard key={stat.label} {...stat} icon={STAT_ICONS[index]} />
+          <StatCard key={stat.label} {...stat} icon={STAT_ICONS[index] ?? Receipt} />
         ))}
       </section>
 
