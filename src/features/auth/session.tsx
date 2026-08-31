@@ -101,7 +101,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
             setUser(null);
             setIsLoading(false);
           }
-        } else if (event === "SIGNED_IN" && session) {
+        } else if ((event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") && session) {
           setIsLoading(true);
           await fetchProfile(session.user.id);
         }

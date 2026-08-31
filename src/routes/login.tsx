@@ -102,10 +102,7 @@ function LoginPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password">Contraseña</Label>
-              <Link to="/login" className="text-xs text-primary hover:underline" onClick={(e) => {
-                e.preventDefault();
-                toast.info("Contacta al administrador para recuperar tu contraseña.");
-              }}>
+              <Link to="/forgot-password" className="text-xs text-primary hover:underline">
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
