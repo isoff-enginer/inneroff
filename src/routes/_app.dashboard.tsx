@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { DashboardView } from "@/features/dashboard/dashboard-view";
+import { BossDashboard as DashboardView } from "@/features/dashboard/dashboard-view";
 
 export const Route = createFileRoute("/_app/dashboard")({
   head: () => ({

@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_app/")({
   component: DashboardRouter,
 });
 
-function DashboardRouter() {
+export function DashboardRouter() {
   const { role, user } = useSession();
 
   // Si tiene asignada una tienda
