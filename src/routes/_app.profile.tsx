@@ -28,7 +28,7 @@ function ProfilePage() {
 
   const fields = [
     ["Nombre completo", user.fullName],
-    ["Nombre visible", user.displayName],
+    ["Nombre visible", user.displayName ?? user.fullName],
     ["Rol", ROLE_LABELS[role]],
     ["Estado", "Activo"],
   ] as const;
@@ -40,7 +40,7 @@ function ProfilePage() {
       <section className="surface max-w-2xl p-6">
         <div className="flex items-center gap-4">
           <Avatar className="size-14">
-            <AvatarFallback>{user.displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback>{(user.displayName ?? user.fullName).slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
             <p className="text-base font-semibold">{user.fullName}</p>
