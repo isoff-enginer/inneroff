@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { PageHeader } from "@/components/common/page-header";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ROLE_LABELS, useSession } from "@/features/auth/session";
+import { useSession } from "@/features/auth/session";
+import { ROLE_LABELS } from "@/types/domain";
 
 export const Route = createFileRoute("/_app/profile")({
   head: () => ({
