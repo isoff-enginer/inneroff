@@ -17,7 +17,9 @@ export function useBossDashboardData() {
         .select(`
           amount,
           created_at,
-          category:product_categories(name)
+          store_id,
+          category:product_categories(name),
+          store:stores(name)
         `)
         .eq("entry_type", "income")
         .gte("created_at", thirtyDaysAgo.toISOString());
@@ -45,7 +47,10 @@ export function useBossDashboardData() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("dispatches")
-        .select("id, created_at, status")
+        .select(`
+          id, created_at, status, total_value, from_location_type,
+          dispatch_items(quantity)
+        `)
         .gte("created_at", thirtyDaysAgo.toISOString());
       
       if (error) throw error;
@@ -199,12 +204,37 @@ export function useBossDashboardData() {
   const dispatchesData = dispatchesStatsQuery.data || [];
   let dispatchesToday = 0;
   let dispatchesYesterday = 0;
+  let warehouseDispatchCount = 0;
+  let warehouseDispatchValue = 0;
+  let warehouseDispatchProducts = 0;
+
   dispatchesData.forEach((entry: any) => {
     const time = new Date(entry.created_at).getTime();
-    if (time >= startOfToday) dispatchesToday++;
-    else if (time >= startOfYesterday && time < startOfToday) dispatchesYesterday++;
+    if (time >= startOfToday) {
+      dispatchesToday++;
+      // Contar despachos que salen de bodega hacia tiendas
+      if (entry.from_location_type === 'warehouse') {
+        warehouseDispatchCount++;
+        warehouseDispatchValue += Number(entry.total_value || 0);
+        
+        // Sumar productos si los items vienen populados
+        if (entry.dispatch_items && Array.isArray(entry.dispatch_items)) {
+          entry.dispatch_items.forEach((item: any) => {
+            warehouseDispatchProducts += Number(item.quantity || 0);
+          });
+        }
+      }
+    } else if (time >= startOfYesterday && time < startOfToday) {
+      dispatchesYesterday++;
+    }
   });
   const dispatchesTrend = dispatchesYesterday > 0 ? ((dispatchesToday - dispatchesYesterday) / dispatchesYesterday) * 100 : 0;
+  
+  const dispatchStats = {
+    count: warehouseDispatchCount,
+    value: warehouseDispatchValue,
+    products: warehouseDispatchProducts,
+  };
 
   // Inventario
   const rawInventory = inventoryQuery.data || [];
@@ -259,6 +289,23 @@ export function useBossDashboardData() {
   recentActivity.sort((a, b) => b.timestamp - a.timestamp);
   recentActivity = recentActivity.slice(0, 8); // top 8 activities
 
+  // Agrupar ventas por tienda (solo hoy para la lista estilo "PAYMENTS")
+  const storeSalesMap = new Map<string, { id: string; name: string; total: number }>();
+  salesData.forEach((entry: any) => {
+    const time = new Date(entry.created_at).getTime();
+    if (time >= startOfToday && entry.store_id) {
+      const storeName = entry.store?.name || 'Tienda Desconocida';
+      const amount = Number(entry.amount);
+      const existing = storeSalesMap.get(entry.store_id);
+      if (existing) {
+        existing.total += amount;
+      } else {
+        storeSalesMap.set(entry.store_id, { id: entry.store_id, name: storeName, total: amount });
+      }
+    }
+  });
+  const storeSales = Array.from(storeSalesMap.values()).sort((a, b) => b.total - a.total);
+
   return {
     salesToday,
     salesYesterday,
@@ -267,6 +314,8 @@ export function useBossDashboardData() {
     paymentsTrend,
     dispatchesToday,
     dispatchesTrend,
+    dispatchStats,
+    storeSales,
     totalInventoryValue,
     criticalInventoryItems,
     salesChartData,

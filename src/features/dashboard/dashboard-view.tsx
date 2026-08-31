@@ -1,366 +1,192 @@
 import { Link } from "@tanstack/react-router";
 import { 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Receipt, 
-  Truck, 
-  Wallet, 
-  AlertCircle,
-  ArrowRight,
-  TrendingUp,
-  PackageOpen,
-  Clock,
-  DollarSign
+  Bell, 
+  MessageSquare, 
+  ChevronDown, 
+  ChevronUp,
+  Store,
+  PackageSearch,
+  Truck,
+  ArrowRight
 } from "lucide-react";
 import { useState } from "react";
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from "recharts";
 
-import { PageHeader } from "@/components/common/page-header";
-import { StatusBadge } from "@/components/common/status-badge";
-import { Button } from "@/components/ui/button";
 import { useSession } from "@/features/auth/session";
 import { useBossDashboardData } from "@/features/dashboard/use-dashboard-data";
-import { formatCurrency, greeting } from "@/lib/format";
-
-// Colores premium para los gráficos (estilo Linear/Stripe)
-const CHART_COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
-
-// Componente para KPI Cards
-function PremiumStatCard({ 
-  title, 
-  value, 
-  trend, 
-  icon: Icon, 
-  isCurrency = false 
-}: { 
-  title: string; 
-  value: number; 
-  trend: number; 
-  icon: any; 
-  isCurrency?: boolean; 
-}) {
-  const isPositive = trend >= 0;
-  
-  return (
-    <div className="flex flex-col gap-3 rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border/50 transition-all hover:shadow-md">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-muted-foreground">{title}</span>
-        <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
-          <Icon className="size-4" />
-        </div>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <h3 className="text-2xl font-bold tracking-tight text-foreground">
-          {isCurrency ? formatCurrency(value) : value.toLocaleString('es-ES')}
-        </h3>
-      </div>
-      <div className="flex items-center gap-1.5 text-xs font-medium">
-        <span className={`flex items-center ${isPositive ? 'text-emerald-500' : 'text-rose-500'}`}>
-          {isPositive ? <ArrowUpRight className="mr-0.5 size-3.5" /> : <ArrowDownRight className="mr-0.5 size-3.5" />}
-          {Math.abs(trend).toFixed(1)}%
-        </span>
-        <span className="text-muted-foreground font-normal">vs ayer</span>
-      </div>
-    </div>
-  );
-}
+import { formatCurrency } from "@/lib/format";
 
 export function BossDashboard() {
   const { user } = useSession();
   const { 
     salesToday, 
-    salesTrend, 
-    paymentsToday, 
-    paymentsTrend, 
-    dispatchesToday, 
-    dispatchesTrend, 
-    criticalInventoryItems, 
-    salesChartData, 
-    categoryChartData, 
-    recentActivity, 
+    storeSales,
+    dispatchStats,
     isLoading 
   } = useBossDashboardData();
 
-  const [timeRange, setTimeRange] = useState<7 | 30>(7);
+  const [isDispatchesOpen, setIsDispatchesOpen] = useState(false);
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
+      <div className="flex min-h-[50vh] items-center justify-center bg-[#f4f2ee]">
         <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          <span className="text-sm">Cargando métricas...</span>
+          <div className="size-6 animate-spin rounded-full border-2 border-black border-t-transparent" />
         </div>
       </div>
     );
   }
 
-  // Filtrar chart data basado en timeRange
-  const filteredSalesData = salesChartData.slice(-timeRange);
+  // Helper para extraer un nombre o usar "Usuario"
+  const displayName = user?.displayName ?? user?.fullName ?? "Usuario";
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8 pb-8">
-      <PageHeader
-        title={`${greeting()}, ${user?.displayName ?? user?.fullName ?? "Jefe"}`}
-        description="Aquí está el resumen general de tu operación al día de hoy."
-        actions={
-          <Button asChild className="rounded-full px-6 shadow-sm">
-            <Link to="/dispatches">
-              Despachos activos
-              <ArrowRight className="ml-2 size-4" aria-hidden="true" />
+    <div className="min-h-screen bg-[#f4f2ee] pb-24 text-black selection:bg-black/10">
+      <div className="mx-auto max-w-md px-4 pt-6">
+        
+        {/* Header Superior */}
+        <header className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="flex size-12 items-center justify-center rounded-full bg-black text-white font-medium shadow-sm">
+              {displayName.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm text-gray-500 font-medium">Hello,</span>
+              <span className="text-base font-semibold leading-none">{displayName}</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button className="flex size-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200/50 transition-transform active:scale-95">
+              <Bell className="size-5 text-black" />
+            </button>
+            <button className="flex size-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200/50 transition-transform active:scale-95">
+              <MessageSquare className="size-5 text-black" />
+            </button>
+          </div>
+        </header>
+
+        {/* Hero Card (Ventas Totales) */}
+        <section className="mb-4 flex flex-col items-center rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-200/50">
+          <span className="text-sm font-semibold text-gray-500 mb-2">Ventas de hoy</span>
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-8">
+            {formatCurrency(salesToday)}
+          </h1>
+          
+          <div className="flex w-full gap-3">
+            <Link 
+              to="/dispatches" 
+              className="flex flex-1 items-center justify-center rounded-xl bg-black py-4 text-sm font-bold text-white transition-transform active:scale-95 shadow-md"
+            >
+              DESPACHOS
             </Link>
-          </Button>
-        }
-      />
+            <Link 
+              to="/inventory" 
+              className="flex flex-1 items-center justify-center rounded-xl border-2 border-gray-100 bg-white py-4 text-sm font-bold text-black transition-transform active:scale-95 shadow-sm"
+            >
+              INVENTARIO
+            </Link>
+          </div>
+        </section>
 
-      {/* KPI Section */}
-      <section aria-label="Métricas principales" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <PremiumStatCard 
-          title="Ventas Hoy" 
-          value={salesToday} 
-          trend={salesTrend} 
-          icon={TrendingUp} 
-          isCurrency 
-        />
-        <PremiumStatCard 
-          title="Recaudo Hoy" 
-          value={paymentsToday} 
-          trend={paymentsTrend} 
-          icon={Wallet} 
-          isCurrency 
-        />
-        <PremiumStatCard 
-          title="Nuevos Pedidos" 
-          value={dispatchesToday} 
-          trend={dispatchesTrend} 
-          icon={PackageOpen} 
-        />
-        <div className="flex flex-col gap-3 rounded-2xl bg-rose-50/50 dark:bg-rose-950/10 p-5 shadow-sm ring-1 ring-rose-200/50 dark:ring-rose-900/50 transition-all hover:shadow-md">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-rose-600 dark:text-rose-400">Inventario Crítico</span>
-            <div className="flex size-8 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/50 text-rose-600 dark:text-rose-400">
-              <AlertCircle className="size-4" />
+        {/* Collapsible Section (Despachos) */}
+        <section className="mb-4">
+          <button 
+            onClick={() => setIsDispatchesOpen(!isDispatchesOpen)}
+            className="flex w-full flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200/50 transition-all active:scale-[0.99]"
+          >
+            <div className="flex w-full items-center justify-between p-5">
+              <div className="flex items-center gap-4">
+                <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                  <Truck className="size-5" />
+                </div>
+                <div className="flex flex-col items-start">
+                  <span className="text-base font-bold">Despachos de la tienda</span>
+                  <span className="text-sm text-gray-500">Resumen de envíos desde bodega</span>
+                </div>
+              </div>
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-gray-50">
+                {isDispatchesOpen ? <ChevronUp className="size-5" /> : <ChevronDown className="size-5" />}
+              </div>
             </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <h3 className="text-2xl font-bold tracking-tight text-foreground">
-              {criticalInventoryItems.length}
-            </h3>
-          </div>
-          <div className="flex items-center gap-1.5 text-xs text-rose-600/80 dark:text-rose-400/80">
-            <span>Productos con stock &lt; 10</span>
-          </div>
-        </div>
-      </section>
+            
+            {/* Expanded Content */}
+            {isDispatchesOpen && (
+              <div className="w-full border-t border-gray-100 bg-gray-50/50 p-5 text-left transition-all">
+                <div className="grid grid-cols-3 gap-4 divide-x divide-gray-200">
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <span className="text-2xl font-bold">{dispatchStats.count}</span>
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Envíos</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <span className="text-lg font-bold">{formatCurrency(dispatchStats.value)}</span>
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Dinero</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center gap-1">
+                    <span className="text-2xl font-bold">{dispatchStats.products}</span>
+                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Prods</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </button>
+        </section>
 
-      {/* Main Charts Section */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Gráfico de Ventas (Area Chart) */}
-        <div className="col-span-1 flex flex-col rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border/50 lg:col-span-2">
-          <div className="mb-6 flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight">Evolución de Ventas</h2>
-              <p className="text-sm text-muted-foreground">Ingresos confirmados a lo largo del tiempo</p>
-            </div>
-            <div className="flex rounded-lg bg-muted/50 p-1">
-              <button 
-                onClick={() => setTimeRange(7)}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${timeRange === 7 ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                7 Días
-              </button>
-              <button 
-                onClick={() => setTimeRange(30)}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${timeRange === 30 ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                30 Días
-              </button>
-            </div>
+        {/* List Section (Ventas por Tiendas) */}
+        <section className="mb-8 flex flex-col overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-gray-200/50">
+          <div className="flex items-center justify-between p-5 pb-2">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-gray-400">Ventas por tiendas</h2>
+            <Link to="/stores" className="text-sm font-semibold text-black flex items-center gap-1">
+              Ver todas <ArrowRight className="size-3.5" />
+            </Link>
           </div>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={filteredSalesData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorVentas" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-border/40" />
-                <XAxis 
-                  dataKey="date" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 12 }} 
-                  dy={10}
-                  className="text-muted-foreground"
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 12 }} 
-                  tickFormatter={(value) => `$${value >= 1000 ? (value/1000).toFixed(0) + 'k' : value}`}
-                  className="text-muted-foreground"
-                />
-                <RechartsTooltip 
-                  contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                  formatter={(value: number) => [formatCurrency(value), "Ventas"]}
-                  labelStyle={{ color: 'hsl(var(--muted-foreground))', marginBottom: '4px' }}
-                />
-                <Area type="monotone" dataKey="ventas" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorVentas)" />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Business Overview (Donut Chart) */}
-        <div className="col-span-1 flex flex-col rounded-2xl bg-card p-6 shadow-sm ring-1 ring-border/50">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight">Ventas por Categoría</h2>
-            <p className="text-sm text-muted-foreground">Distribución de los últimos 30 días</p>
-          </div>
-          <div className="mt-6 flex flex-1 items-center justify-center h-[250px]">
-            {categoryChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryChartData}
-                    innerRadius={70}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
-                  >
-                    {categoryChartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip 
-                    formatter={(value: number) => formatCurrency(value)}
-                    contentStyle={{ borderRadius: '12px', border: '1px solid hsl(var(--border))', padding: '8px 12px' }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+          
+          <div className="flex flex-col p-3">
+            {storeSales.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center text-gray-500">
+                <Store className="size-8 mb-2 opacity-20" />
+                <span className="text-sm font-medium">Aún no hay ventas registradas hoy.</span>
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No hay datos suficientes</p>
+              storeSales.map((store, index) => (
+                <div 
+                  key={store.id} 
+                  className={`flex items-center justify-between p-3 rounded-lg transition-colors hover:bg-gray-50 ${index !== storeSales.length - 1 ? 'border-b border-gray-50' : ''}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#003087] text-white">
+                      {/* Simulating a brand logo like PayPal in the reference */}
+                      <span className="font-bold text-lg">{store.name.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-black">{store.name}</span>
+                      <span className="text-xs font-medium text-gray-400">Tienda Oficial</span>
+                    </div>
+                  </div>
+                  <span className="text-base font-bold text-black">
+                    +{formatCurrency(store.total)}
+                  </span>
+                </div>
+              ))
             )}
           </div>
-          <div className="mt-4 flex flex-col gap-2">
-            {categoryChartData.slice(0, 3).map((cat, idx) => (
-              <div key={cat.name} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="size-2.5 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
-                  <span className="font-medium">{cat.name}</span>
-                </div>
-                <span className="text-muted-foreground">{formatCurrency(cat.value)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        </section>
       </div>
 
-      {/* Activity & Inventory Section */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Actividad Reciente */}
-        <div className="flex flex-col rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
-          <div className="border-b border-border/50 p-6">
-            <h2 className="text-lg font-semibold tracking-tight">Actividad en Vivo</h2>
-            <p className="text-sm text-muted-foreground">Últimos movimientos de la operación</p>
-          </div>
-          <div className="p-6">
-            <div className="space-y-6">
-              {recentActivity.length === 0 ? (
-                <p className="text-center text-sm text-muted-foreground py-4">No hay actividad reciente.</p>
-              ) : (
-                recentActivity.map((activity: any) => (
-                  <div key={activity.id} className="flex items-start gap-4">
-                    <div className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full ${activity.type === 'sale' ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400' : 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'}`}>
-                      {activity.type === 'sale' ? <DollarSign className="size-4" /> : <Truck className="size-4" />}
-                    </div>
-                    <div className="flex flex-1 flex-col gap-1">
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm font-medium text-foreground">
-                          {activity.type === 'sale' ? 'Nueva Venta' : `Despacho #${String(activity.number).padStart(3, "0")}`}
-                        </p>
-                        <span className="text-xs text-muted-foreground flex items-center gap-1">
-                          <Clock className="size-3" />
-                          {activity.date.split(',')[1]?.trim() || activity.date}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground">
-                          {activity.type === 'sale' 
-                            ? `Categoría: ${activity.category}` 
-                            : `${activity.fromName} → ${activity.toName}`}
-                        </p>
-                        <span className="text-sm font-medium">
-                          {formatCurrency(activity.type === 'sale' ? activity.amount : activity.totalValue)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Salud de Inventario (Crítico) */}
-        <div className="flex flex-col rounded-2xl bg-card shadow-sm ring-1 ring-border/50">
-          <div className="border-b border-border/50 p-6 flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-semibold tracking-tight text-rose-600 dark:text-rose-400">Atención Requerida</h2>
-              <p className="text-sm text-muted-foreground">Productos con stock bajo crítico (&lt; 10)</p>
-            </div>
-            <Button variant="outline" size="sm" asChild className="rounded-full">
-              <Link to="/inventory">Ver inventario</Link>
-            </Button>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {criticalInventoryItems.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <div className="flex size-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30">
-                    <Boxes className="size-6" />
-                  </div>
-                  <p className="mt-3 text-sm font-medium text-foreground">Inventario Saludable</p>
-                  <p className="text-xs text-muted-foreground mt-1">No hay productos con stock crítico.</p>
-                </div>
-              ) : (
-                criticalInventoryItems.map((item, idx) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-xl border border-border/50 p-4 transition-colors hover:bg-muted/50">
-                    <div className="flex items-center gap-3">
-                      <div className="flex size-8 items-center justify-center font-bold text-muted-foreground bg-muted rounded-md text-xs">
-                        {idx + 1}
-                      </div>
-                      <span className="text-sm font-medium">{item.name}</span>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-sm font-bold text-rose-600 dark:text-rose-400">
-                        {item.quantity} und.
-                      </span>
-                      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-rose-100 dark:bg-rose-900/30">
-                        <div 
-                          className="h-full bg-rose-500 rounded-full" 
-                          style={{ width: `${(item.quantity / 10) * 100}%` }} 
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Floating Bottom Navigation */}
+      <div className="fixed bottom-6 left-0 right-0 z-50 px-4 flex justify-center pointer-events-none">
+        <nav className="flex items-center gap-1 rounded-2xl bg-white p-2 shadow-xl ring-1 ring-black/5 pointer-events-auto">
+          <button className="flex flex-col items-center justify-center rounded-xl bg-[#cbf382] px-6 py-2.5 text-black transition-colors">
+            <PackageSearch className="size-5 mb-1" />
+            <span className="text-[10px] font-bold tracking-wider">HOME</span>
+          </button>
+          <button className="flex flex-col items-center justify-center rounded-xl px-6 py-2.5 text-gray-400 hover:text-black hover:bg-gray-50 transition-colors">
+            <Truck className="size-5 mb-1" />
+            <span className="text-[10px] font-bold tracking-wider uppercase">Envíos</span>
+          </button>
+          <button className="flex flex-col items-center justify-center rounded-xl px-6 py-2.5 text-gray-400 hover:text-black hover:bg-gray-50 transition-colors">
+            <Store className="size-5 mb-1" />
+            <span className="text-[10px] font-bold tracking-wider uppercase">Tiendas</span>
+          </button>
+        </nav>
       </div>
     </div>
   );
