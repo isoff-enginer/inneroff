@@ -24,7 +24,7 @@ export function DashboardView() {
   return (
     <>
       <PageHeader
-        title={`${greeting()}, ${user.displayName}`}
+        title={`${greeting()}, ${user.displayName ?? user.fullName}`}
         description="Resumen de operación entre fábrica, bodegas y tiendas."
         actions={
           <Button asChild>
