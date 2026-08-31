@@ -17,6 +17,7 @@ import { Route as AppDispatchesRouteImport } from './routes/_app.dispatches'
 import { Route as AppInventoryRouteImport } from './routes/_app.inventory'
 import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
+import { Route as AppProfileRouteImport } from './routes/_app.profile'
 import { Route as AppSalesRouteImport } from './routes/_app.sales'
 
 const AppRoute = AppRouteImport.update({
@@ -58,6 +59,11 @@ const AppNotificationsRoute = AppNotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfileRoute = AppProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalesRoute = AppSalesRouteImport.update({
   id: '/sales',
   path: '/sales',
@@ -72,6 +78,7 @@ export interface FileRoutesByFullPath {
   '/inventory': typeof AppInventoryRoute
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
+  '/profile': typeof AppProfileRoute
   '/sales': typeof AppSalesRoute
 }
 export interface FileRoutesByTo {
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/inventory': typeof AppInventoryRoute
   '/messages': typeof AppMessagesRoute
   '/notifications': typeof AppNotificationsRoute
+  '/profile': typeof AppProfileRoute
   '/sales': typeof AppSalesRoute
   '/': typeof AppIndexRoute
 }
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/_app/inventory': typeof AppInventoryRoute
   '/_app/messages': typeof AppMessagesRoute
   '/_app/notifications': typeof AppNotificationsRoute
+  '/_app/profile': typeof AppProfileRoute
   '/_app/sales': typeof AppSalesRoute
   '/_app/': typeof AppIndexRoute
 }
@@ -106,6 +115,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/messages'
     | '/notifications'
+    | '/profile'
     | '/sales'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/inventory'
     | '/messages'
     | '/notifications'
+    | '/profile'
     | '/sales'
     | '/'
   id:
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/_app/inventory'
     | '/_app/messages'
     | '/_app/notifications'
+    | '/_app/profile'
     | '/_app/sales'
     | '/_app/'
   fileRoutesById: FileRoutesById
@@ -193,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppNotificationsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/profile': {
+      id: '/_app/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof AppProfileRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/sales': {
       id: '/_app/sales'
       path: '/sales'
@@ -209,6 +228,7 @@ interface AppRouteChildren {
   AppInventoryRoute: typeof AppInventoryRoute
   AppMessagesRoute: typeof AppMessagesRoute
   AppNotificationsRoute: typeof AppNotificationsRoute
+  AppProfileRoute: typeof AppProfileRoute
   AppSalesRoute: typeof AppSalesRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -219,6 +239,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppInventoryRoute: AppInventoryRoute,
   AppMessagesRoute: AppMessagesRoute,
   AppNotificationsRoute: AppNotificationsRoute,
+  AppProfileRoute: AppProfileRoute,
   AppSalesRoute: AppSalesRoute,
   AppIndexRoute: AppIndexRoute,
 }
