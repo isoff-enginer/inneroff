@@ -1,44 +1,133 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
-
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type { AppRole, SessionUser } from "@/types/domain";
-
-/**
- * Contexto de sesión de la UI.
- *
- * ETAPA 1: no hay autenticación. El usuario aquí es un placeholder visual y
- * está claramente separado de Supabase. Cuando se conecte Supabase Auth, este
- * provider debe alimentarse de `supabase.auth` + tabla `profiles`, sin cambiar
- * la API que consumen los componentes.
- */
-
-const PLACEHOLDER_USER: SessionUser = {
-  id: "placeholder",
-  fullName: "Invitado",
-  displayName: "Invitado",
-  role: "boss",
-};
+import { toast } from "sonner";
 
 interface SessionContextValue {
-  user: SessionUser;
-  role: AppRole;
-  /** Solo para previsualizar la experiencia por rol mientras no hay auth. */
-  setRole: (role: AppRole) => void;
+  user: SessionUser | null;
+  role: AppRole | null;
   isAuthenticated: boolean;
+  isLoading: boolean;
+  signOut: () => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [role, setRole] = useState<AppRole>(PLACEHOLDER_USER.role);
+  const [user, setUser] = useState<SessionUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchProfile(userId: string) {
+      try {
+        const [
+          { data: profile, error },
+          { data: storeUser },
+          { data: warehouseUser },
+          { data: factoryUser },
+        ] = await Promise.all([
+          supabase.from("profiles").select("*").eq("id", userId).single(),
+          supabase.from("store_users").select("store_id").eq("user_id", userId).maybeSingle(),
+          supabase.from("warehouse_users").select("warehouse_id").eq("user_id", userId).maybeSingle(),
+          supabase.from("factory_users").select("factory_id").eq("user_id", userId).maybeSingle(),
+        ]);
+
+        if (error) throw error;
+
+        if (profile) {
+          if (profile.status !== "active") {
+            toast.error("Tu cuenta no está activa.");
+            await supabase.auth.signOut();
+            if (mounted) {
+              setUser(null);
+              setIsLoading(false);
+            }
+            return;
+          }
+
+          if (mounted) {
+            setUser({
+              id: profile.id,
+              fullName: profile.full_name,
+              displayName: profile.display_name || undefined,
+              role: profile.role as AppRole,
+              avatarUrl: profile.avatar_url || undefined,
+              storeId: storeUser?.store_id || undefined,
+              warehouseId: warehouseUser?.warehouse_id || undefined,
+              factoryId: factoryUser?.factory_id || undefined,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile:", error);
+        toast.error("Error al obtener el perfil.");
+        if (mounted) setUser(null);
+      } finally {
+        if (mounted) setIsLoading(false);
+      }
+    }
+
+    async function loadSession() {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) throw sessionError;
+
+        if (session?.user) {
+          await fetchProfile(session.user.id);
+        } else {
+          if (mounted) {
+            setUser(null);
+            setIsLoading(false);
+          }
+        }
+      } catch (error) {
+        console.error("Error loading session:", error);
+        if (mounted) {
+          setUser(null);
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === "SIGNED_OUT") {
+          if (mounted) {
+            setUser(null);
+            setIsLoading(false);
+          }
+        } else if (event === "SIGNED_IN" && session) {
+          setIsLoading(true);
+          await fetchProfile(session.user.id);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const signOut = async () => {
+    setIsLoading(true);
+    await supabase.auth.signOut();
+  };
 
   const value = useMemo<SessionContextValue>(
     () => ({
-      user: { ...PLACEHOLDER_USER, role },
-      role,
-      setRole,
-      isAuthenticated: false,
+      user,
+      role: user?.role || null,
+      isAuthenticated: !!user,
+      isLoading,
+      signOut,
     }),
-    [role],
+    [user, isLoading],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

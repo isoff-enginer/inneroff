@@ -1,5 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { ShieldCheck } from "lucide-react";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { ShieldCheck, Eye, EyeOff, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/features/auth/session";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,17 +17,63 @@ export const Route = createFileRoute("/login")({
         name: "description",
         content: "Acceso restringido al panel interno de operación de fábrica, bodegas y tiendas.",
       },
-      { property: "og:title", content: "Iniciar sesión · Reserva Operaciones" },
-      {
-        property: "og:description",
-        content: "Acceso restringido al panel interno de operación.",
-      },
     ],
   }),
   component: LoginPage,
 });
 
 function LoginPage() {
+  const { isAuthenticated, isLoading: sessionLoading } = useSession();
+  const router = useRouter();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.navigate({ to: "/" });
+    }
+  }, [isAuthenticated, router]);
+
+  if (sessionLoading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-muted/40">
+        <Loader2 className="size-8 animate-spin text-primary" />
+      </main>
+    );
+  }
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error("Por favor, ingresa correo y contraseña.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        if (error.message.includes("Invalid login credentials")) {
+          toast.error("Credenciales incorrectas.");
+        } else {
+          toast.error("Ocurrió un error al iniciar sesión.");
+        }
+      }
+      // If success, the onAuthStateChange in SessionProvider will trigger and set isAuthenticated, which triggers the useEffect to redirect.
+    } catch (err) {
+      toast.error("Error de conexión. Intenta nuevamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <main className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-12">
       <div className="surface w-full max-w-sm p-7">
@@ -32,28 +82,64 @@ function LoginPage() {
         </div>
         <h1 className="mt-5 text-xl font-semibold tracking-tight">Acceso al sistema</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Pantalla visual. La autenticación se conectará con Supabase Auth.
+          Ingresa tus credenciales para continuar.
         </p>
 
-        <form className="mt-6 space-y-4" onSubmit={(event) => event.preventDefault()}>
+        <form className="mt-6 space-y-4" onSubmit={handleLogin}>
           <div className="space-y-2">
             <Label htmlFor="email">Correo corporativo</Label>
-            <Input id="email" type="email" autoComplete="email" placeholder="nombre@empresa.com" />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              placeholder="nombre@empresa.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={isSubmitting}
+              required
+            />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Contraseña</Label>
-            <Input id="password" type="password" autoComplete="current-password" />
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Contraseña</Label>
+              <Link to="/login" className="text-xs text-primary hover:underline" onClick={(e) => {
+                e.preventDefault();
+                toast.info("Contacta al administrador para recuperar tu contraseña.");
+              }}>
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isSubmitting}
+                required
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setShowPassword(!showPassword)}
+                disabled={isSubmitting}
+              >
+                {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
           </div>
-          <Button type="submit" className="w-full" disabled>
-            Ingresar
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Iniciando sesión...
+              </>
+            ) : (
+              "Ingresar"
+            )}
           </Button>
         </form>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          <Link to="/" className="underline underline-offset-4 hover:text-foreground">
-            Ver el panel de demostración
-          </Link>
-        </p>
       </div>
     </main>
   );

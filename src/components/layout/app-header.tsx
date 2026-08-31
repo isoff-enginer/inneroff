@@ -26,7 +26,7 @@ function initials(name: string) {
 }
 
 export function AppHeader({ unreadCount = 0 }: { unreadCount?: number }) {
-  const { user, role } = useSession();
+  const { user, role, signOut } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -78,15 +78,15 @@ export function AppHeader({ unreadCount = 0 }: { unreadCount?: number }) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="gap-2 px-2" aria-label="Cuenta">
               <Avatar className="size-7">
-                <AvatarFallback className="text-xs">{initials(user.fullName)}</AvatarFallback>
+                <AvatarFallback className="text-xs">{initials(user?.fullName || "")}</AvatarFallback>
               </Avatar>
-              <span className="hidden text-sm font-medium sm:inline">{user.displayName}</span>
+              <span className="hidden text-sm font-medium sm:inline">{user?.displayName}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>
-              <p className="text-sm font-medium">{user.fullName}</p>
-              <p className="text-xs font-normal text-muted-foreground">{ROLE_LABELS[role]}</p>
+              <p className="text-sm font-medium">{user?.fullName}</p>
+              <p className="text-xs font-normal text-muted-foreground">{role ? ROLE_LABELS[role] : ""}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
@@ -96,10 +96,10 @@ export function AppHeader({ unreadCount = 0 }: { unreadCount?: number }) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <Link to="/login">
-                <LogOut className="size-4" aria-hidden="true" />
-                Ir a inicio de sesión
-              </Link>
+              <button className="w-full cursor-pointer" onClick={() => signOut()}>
+                <LogOut className="size-4 mr-2" aria-hidden="true" />
+                Cerrar sesión
+              </button>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

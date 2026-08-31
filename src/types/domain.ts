@@ -35,6 +35,9 @@ export interface SessionUser {
   email?: string;
   role: AppRole;
   avatarUrl?: string;
+  storeId?: string;
+  warehouseId?: string;
+  factoryId?: string;
 }
 
 export type DispatchStatus = "draft" | "pending" | "dispatched" | "received" | "cancelled";
