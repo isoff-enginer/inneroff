@@ -77,11 +77,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Reserva Operaciones" },
+      {
+        name: "description",
+        content:
+          "Panel empresarial interno para operación de fábrica, bodegas y tiendas: inventario, despachos, recaudos y mensajería.",
+      },
+      { property: "og:title", content: "Reserva Operaciones" },
+      {
+        property: "og:description",
+        content: "Panel empresarial interno de inventario, despachos y recaudos.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
