@@ -8,7 +8,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { generateSignedPreKey, generateOneTimePreKeys, PreKeyBundle } from '../crypto/PreKeyBundle';
 import { getProtectedData, saveProtectedData } from '../crypto/KeyStore';
-import { bytesToBase64 } from '../crypto/CryptoCore';
 
 export class PreKeyService {
     
