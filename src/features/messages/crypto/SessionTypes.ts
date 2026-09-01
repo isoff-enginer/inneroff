@@ -16,17 +16,6 @@ export interface DoubleRatchetState {
     Nr: number; // Message number (receive)
     PN: number; // Number of messages in previous sending chain
     skippedMessageKeys: Record<string, { key: Uint8Array, timestamp: number }>; // Clave: "b64(DHr)_Nr", Valor: MessageKey + timestamp
-}
-
-export interface AADContext {
-    protocol_version: number;
-    conversation_id: string;
-    message_id: string;
-    sender_device_id: string;
-    recipient_device_id: string;
-    session_id: string;
-}
-
 export interface DoubleRatchetHeader {
     protocol_version: number;
     session_id: string; // ID unívoco de la sesión entre este par de dispositivos

@@ -30,7 +30,7 @@ export class PreKeyService {
         await saveProtectedData('signed_pre_key', 'latest', { id: signedPreKeyId, privateKey });
 
         // Subimos a Supabase (solo material PÚBLICO y FIRMAS)
-        const { error } = await supabase.from('device_pre_keys').upsert({
+        const { error } = await (supabase as any).from('device_pre_keys').upsert({
             device_id: deviceId,
             identity_agreement_key_b64: identityAgreementKeyB64,
             signed_pre_key_id: signedPreKey.keyId,
@@ -67,7 +67,7 @@ export class PreKeyService {
             consumed: false
         }));
 
-        const { error } = await supabase.from('one_time_pre_keys').insert(payload);
+        const { error } = await (supabase as any).from('one_time_pre_keys').insert(payload);
         if (error) {
             console.error("Failed to insert OPKs", error.code);
             throw new Error("Failed to publish One-Time Pre-Keys");
@@ -79,7 +79,7 @@ export class PreKeyService {
      * Retorna el objeto exactamente como lo espera SessionBootstrap.ts.
      */
     async getPreKeyBundle(deviceId: string): Promise<PreKeyBundle> {
-        const { data, error } = await supabase.rpc('get_device_prekey_bundle', {
+        const { data, error } = await (supabase as any).rpc('get_device_prekey_bundle', {
             p_device_id: deviceId
         });
 

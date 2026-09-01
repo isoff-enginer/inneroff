@@ -2,7 +2,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { SessionManager } from '../crypto/SessionManager';
 import { bootstrapAsAlice } from '../crypto/SessionBootstrap';
 import { randomBytes, encryptSymmetric, bytesToBase64, base64ToBytes } from '../crypto/CryptoCore';
-import { AADContext, DoubleRatchetHeader } from '../crypto/SessionTypes';
+import { DoubleRatchetHeader } from '../crypto/SessionTypes';
+import { AADContext } from '../crypto/DoubleRatchet';
 import { getProtectedData } from '../crypto/KeyStore';
 
 export interface SerializedRatchetMessage {
