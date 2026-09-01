@@ -121,18 +121,27 @@ export class MessageService {
         // 6. Insertar en base de datos (Supabase no soporta transacciones directas desde el frontend, 
         // requeriría un RPC. Usamos Promise.all para simular atomicidad básica o inserción secuencial).
         
-        const { error: msgErr } = await (supabase as any).from('messages').insert({
+        // DOCUMENTACIÓN DE TIPOS: `messages` y `message_key_envelopes` no están en `src/integrations/supabase/types.ts`
+        // porque estas tablas pertenecen al diseño de la Fase 5.2 y aún NO han sido creadas en el esquema ni generadas 
+        // mediante `supabase gen types`.
+        // Para evitar el uso de `as any` como parche silencioso, forzamos los tipos temporales:
+        type PendingMessageInsert = { id: string, conversation_id: string, sender_id: string, ciphertext: string, message_type: string };
+        type PendingEnvelopeInsert = { message_id: string, device_id: string, encrypted_message_key: string, key_algorithm: string };
+        
+        // @ts-expect-error: Tablas pendientes de la Fase 5.2
+        const { error: msgErr } = await supabase.from('messages').insert({
             id: messageId,
             conversation_id: conversationId,
             sender_id: senderId,
             ciphertext: bytesToBase64(contentCiphertext),
             message_type: 'text'
-        });
+        } as PendingMessageInsert);
 
         if (msgErr) throw new Error("Failed to insert message ciphertext");
 
         if (envelopesToInsert.length > 0) {
-            const { error: envErr } = await (supabase as any).from('message_key_envelopes').insert(envelopesToInsert);
+            // @ts-expect-error: Tablas pendientes de la Fase 5.2
+            const { error: envErr } = await supabase.from('message_key_envelopes').insert(envelopesToInsert as PendingEnvelopeInsert[]);
             if (envErr) {
                 // Fuga de transacción. Estrategia de recuperación: El mensaje principal está, pero nadie lo puede leer.
                 console.error("Failed to insert envelopes", envErr);

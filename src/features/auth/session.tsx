@@ -9,6 +9,7 @@ interface SessionContextValue {
   isAuthenticated: boolean;
   isLoading: boolean;
   signOut: () => Promise<void>;
+  registerDevice: (pin: string) => Promise<void>;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -121,6 +122,25 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   };
 
+  const registerDevice = async (pin: string) => {
+    if (typeof window === "undefined" || typeof navigator === "undefined") {
+      throw new Error("Device registration is only available in the browser.");
+    }
+    if (!user) {
+      throw new Error("Must be logged in to register device.");
+    }
+    try {
+      const { DeviceRegistrationService } = await import('@/features/devices/services/DeviceRegistrationService');
+      const service = new DeviceRegistrationService();
+      await service.registerCurrentDevice(pin, navigator.userAgent);
+      toast.success("Dispositivo registrado de forma segura.");
+    } catch (err) {
+      console.error("Device registration failed:", err);
+      toast.error("Error al registrar el dispositivo.");
+      throw err;
+    }
+  };
+
   const value = useMemo<SessionContextValue>(
     () => ({
       user,
@@ -128,6 +148,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       isAuthenticated: !!user,
       isLoading,
       signOut,
+      registerDevice,
     }),
     [user, isLoading],
   );
