@@ -58,6 +58,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               warehouseId: warehouseUser?.warehouse_id || undefined,
               factoryId: factoryUser?.factory_id || undefined,
             });
+            
+            // Execute Device Registration asynchronously without blocking UI
+            import('../devices/services/DeviceRegistrationService').then(({ DeviceRegistrationService }) => {
+              const deviceService = new DeviceRegistrationService();
+              // Using a dummy PIN "0000" for Phase 5.1 tests as UI prompt is out of scope.
+              deviceService.registerCurrentDevice("0000").catch(err => {
+                console.error("Device Registration failed:", err);
+              });
+            });
           }
         }
       } catch (error) {

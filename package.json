@@ -41,6 +41,9 @@
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toggle": "^1.1.10",
     "@radix-ui/react-toggle-group": "^1.1.11",
+    "@noble/ciphers": "^1.1.2",
+    "@noble/curves": "^1.6.0",
+    "@noble/hashes": "^1.5.0",
     "@radix-ui/react-tooltip": "^1.2.8",
     "@supabase/supabase-js": "^2.112.4",
     "@tailwindcss/vite": "^4.2.1",
@@ -86,6 +89,7 @@
     "prettier": "^3.7.3",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "8.1.5"
+    "vite": "8.1.5",
+    "vitest": "^2.1.2"
   }
 }
