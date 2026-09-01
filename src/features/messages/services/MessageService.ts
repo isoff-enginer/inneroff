@@ -122,7 +122,7 @@ export class MessageService {
         // 6. Insertar en base de datos (Supabase no soporta transacciones directas desde el frontend, 
         // requeriría un RPC. Usamos Promise.all para simular atomicidad básica o inserción secuencial).
         
-        const { error: msgErr } = await supabase.from('messages').insert({
+        const { error: msgErr } = await (supabase as any).from('messages').insert({
             id: messageId,
             conversation_id: conversationId,
             sender_id: senderId,
@@ -133,7 +133,7 @@ export class MessageService {
         if (msgErr) throw new Error("Failed to insert message ciphertext");
 
         if (envelopesToInsert.length > 0) {
-            const { error: envErr } = await supabase.from('message_key_envelopes').insert(envelopesToInsert);
+            const { error: envErr } = await (supabase as any).from('message_key_envelopes').insert(envelopesToInsert);
             if (envErr) {
                 // Fuga de transacción. Estrategia de recuperación: El mensaje principal está, pero nadie lo puede leer.
                 console.error("Failed to insert envelopes", envErr);
