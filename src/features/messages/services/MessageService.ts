@@ -1,7 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { SessionManager } from '../crypto/SessionManager';
 import { bootstrapAsAlice } from '../crypto/SessionBootstrap';
-import { generateRandomBytes, encryptSymmetric, bytesToBase64, base64ToBytes } from '../crypto/CryptoCore';
+import { randomBytes, encryptSymmetric, bytesToBase64, base64ToBytes } from '../crypto/CryptoCore';
 import { AADContext, DoubleRatchetHeader } from '../crypto/SessionTypes';
 import { getProtectedData } from '../crypto/KeyStore';
 
