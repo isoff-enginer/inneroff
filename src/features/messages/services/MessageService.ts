@@ -59,7 +59,7 @@ export class MessageService {
         }
 
         // 4. Preparar ContentKey y cifrar el cuerpo del mensaje
-        const contentKey = generateRandomBytes(32);
+        const contentKey = randomBytes(32);
         const messageId = crypto.randomUUID();
         const rawPlaintext = new TextEncoder().encode(plaintext);
         

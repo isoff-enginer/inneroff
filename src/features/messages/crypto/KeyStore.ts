@@ -13,7 +13,7 @@ const DB_VERSION = 1;
 const STORE_NAME = 'protected_keys';
 
 // Namespaces definidos para evitar colisiones
-export type KeyNamespace = 'identity' | 'session' | 'ratchet' | 'attachments';
+export type KeyNamespace = 'identity' | 'session' | 'ratchet' | 'attachments' | 'one_time_pre_keys' | 'signed_pre_key';
 
 function getDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
