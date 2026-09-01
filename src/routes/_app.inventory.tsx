@@ -1,5 +1,3 @@
-import { createFileRoute } from "@tanstack/react-query"; // Wait, TanStack Router
-// Fix import:
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { Search, Plus, Minus, X, CheckCircle2, Package, Folder, Tag, Layers } from "lucide-react";
