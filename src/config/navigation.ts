@@ -1,15 +1,15 @@
 import {
-  LayoutDashboard,
-  Boxes,
-  Truck,
-  Receipt,
+  Home,
+  Package,
+  Send,
+  Wallet,
   Bell,
-  MessageSquare,
+  MessageCircle,
   Settings,
   Factory,
-  Warehouse,
+  Archive,
   Store,
-  ShieldCheck,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 
@@ -35,17 +35,17 @@ export const NAV_SECTIONS: NavSection[] = [
   {
     title: "Operación",
     items: [
-      { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { to: "/inventory", label: "Inventario", icon: Boxes },
-      { to: "/dispatches", label: "Despachos", icon: Truck },
-      { to: "/sales", label: "Ventas / Recaudos", icon: Receipt },
+      { to: "/dashboard", label: "Dashboard", icon: Home },
+      { to: "/inventory", label: "Inventario", icon: Package },
+      { to: "/dispatches", label: "Despachos", icon: Send },
+      { to: "/sales", label: "Ventas / Recaudos", icon: Wallet },
     ],
   },
   {
     title: "Ubicaciones",
     items: [
       { to: "/factory", label: "Fábrica", icon: Factory, placeholder: true },
-      { to: "/warehouse", label: "Bodega", icon: Warehouse, placeholder: true },
+      { to: "/warehouse", label: "Bodega", icon: Archive, placeholder: true },
       { to: "/store", label: "Tiendas", icon: Store, placeholder: true },
     ],
   },
@@ -53,7 +53,7 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Comunicación",
     items: [
       { to: "/notifications", label: "Notificaciones", icon: Bell },
-      { to: "/messages", label: "Mensajes", icon: MessageSquare },
+      { to: "/messages", label: "Mensajes", icon: MessageCircle },
     ],
   },
   {
@@ -62,7 +62,7 @@ export const NAV_SECTIONS: NavSection[] = [
       {
         to: "/admin",
         label: "Administración",
-        icon: ShieldCheck,
+        icon: Shield,
         roles: ["boss", "boss_admin", "operations_admin"],
         placeholder: true,
       },
@@ -73,11 +73,11 @@ export const NAV_SECTIONS: NavSection[] = [
 
 /** Navegación inferior en móvil: solo los accesos primarios. */
 export const MOBILE_NAV: NavItem[] = [
-  { to: "/dashboard", label: "Inicio", icon: LayoutDashboard },
-  { to: "/inventory", label: "Inventario", icon: Boxes },
-  { to: "/dispatches", label: "Despachos", icon: Truck },
-  { to: "/sales", label: "Ventas", icon: Receipt },
-  { to: "/messages", label: "Mensajes", icon: MessageSquare },
+  { to: "/dashboard", label: "Inicio", icon: Home },
+  { to: "/inventory", label: "Inventario", icon: Package },
+  { to: "/dispatches", label: "Despachos", icon: Send },
+  { to: "/sales", label: "Ventas", icon: Wallet },
+  { to: "/messages", label: "Mensajes", icon: MessageCircle },
 ];
 
 export function isVisibleForRole(item: NavItem, role: AppRole): boolean {

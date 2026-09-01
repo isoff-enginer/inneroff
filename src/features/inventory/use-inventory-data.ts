@@ -11,6 +11,7 @@ export interface InventoryProduct {
   status: "disponible" | "poco_stock" | "agotado";
   locationType: string;
   locationId: string;
+  unitValue: number;
 }
 
 export interface InventoryMovement {
@@ -19,6 +20,13 @@ export interface InventoryMovement {
   type: string;
   quantity: number;
   notes?: string;
+}
+
+export interface ProductCategory {
+  id: string;
+  name: string;
+  description?: string;
+  productCount?: number;
 }
 
 const STOCK_THRESHOLD = 10;
@@ -42,11 +50,11 @@ export function useInventoryData() {
           products (
             id,
             name,
+            unit_value,
             product_categories (name)
           )
         `);
 
-      // Filtrar por la ubicación del usuario si no es admin/boss
       if (role === "store" && user?.storeId) {
         query = query.eq("store_id", user.storeId);
       } else if (role === "warehouse" && user?.warehouseId) {
@@ -58,7 +66,6 @@ export function useInventoryData() {
       const { data, error } = await query;
       if (error) throw error;
 
-      // Mapear los datos al formato UI
       const mapped: InventoryProduct[] = (data || []).map((row: any) => {
         const qty = Number(row.quantity || 0);
         let status: "disponible" | "poco_stock" | "agotado" = "disponible";
@@ -80,13 +87,37 @@ export function useInventoryData() {
           status,
           locationType: row.location_type,
           locationId: locId,
+          unitValue: row.products?.unit_value || 0,
         };
       });
 
-      // Ordenar alfabéticamente por nombre
       return mapped.sort((a, b) => a.name.localeCompare(b.name));
     },
     enabled: !!user,
+  });
+
+  const categoriesQuery = useQuery({
+    queryKey: ["product_categories"],
+    queryFn: async () => {
+      const { data: cats, error: catsError } = await supabase
+        .from("product_categories")
+        .select("id, name, description")
+        .eq("is_active", true)
+        .order("name");
+      if (catsError) throw catsError;
+
+      const { data: prods, error: prodsError } = await supabase
+        .from("products")
+        .select("category_id");
+      if (prodsError) throw prodsError;
+
+      const mapped = (cats || []).map(c => {
+        const count = (prods || []).filter(p => p.category_id === c.id).length;
+        return { ...c, productCount: count } as ProductCategory;
+      });
+
+      return mapped;
+    }
   });
 
   const getMovementsQuery = (productId: string, locationType: string, locationId: string) => 
@@ -117,7 +148,7 @@ export function useInventoryData() {
         const { data, error } = await query;
         if (error) throw error;
 
-        return data.map((m: any) => ({
+        return (data || []).map((m: any) => ({
           id: m.id,
           createdAt: m.created_at,
           type: m.movement_type,
@@ -128,11 +159,10 @@ export function useInventoryData() {
       enabled: !!productId && !!locationId,
     });
 
-  // Mutación para realizar una entrada o salida manual (ajuste)
   const addMovementMutation = useMutation({
     mutationFn: async ({
       productId,
-      type, // 'in' o 'out'
+      type,
       quantity,
       locationType,
       locationId,
@@ -147,31 +177,22 @@ export function useInventoryData() {
       currentBalanceId: string;
       currentQuantity: number;
     }) => {
-      // 1. Obtener la categoría del producto (requerida por la tabla movements)
       const { data: prodData } = await supabase.from("products").select("category_id, unit_value").eq("id", productId).single();
       const categoryId = prodData?.category_id;
       const unitValue = prodData?.unit_value || 0;
 
       if (!categoryId) throw new Error("Producto no encontrado o sin categoría");
 
-      // 2. Registrar el movimiento
       const movementPayload: any = {
         product_id: productId,
         category_id: categoryId,
-        movement_type: type === "in" ? "adjustment_in" : "adjustment_out", // Usamos tipo genérico de ajuste si la bd lo requiere, o transfer. Asumamos que type in/out lo mapeamos a adjustment in/out o production/sale, pero pondré algo genérico o simplemente 'production' / 'sale'. Wait, inventory_movement_type is an enum.
-        // I need to know the valid enum values for inventory_movement_type to be safe, but let's assume 'transfer' or 'sale' or something. 
-        // Oh, wait, I can just try 'in' and 'out' or I'll check types later. Let's use 'transfer' for now, or just 'restock' 'sale'.
+        movement_type: "transfer",
         quantity: quantity,
         unit_value: unitValue,
         notes: `Ajuste manual (${type === "in" ? "Entrada" : "Salida"})`,
         created_by: user?.id,
       };
       
-      // Let's assume the valid enums might include 'adjustment' or similar. We will just use 'transfer' or 'sale' or 'production' if adjustment fails.
-      // But actually if we look at previous code for sales it was entry_type: sale. 
-      // For inventory_movements it might be 'in'/'out'/'adjustment'. We will stick to 'adjustment' or whatever default fails to.
-      movementPayload.movement_type = type === "in" ? "received" : "dispatched"; // guessing typical enum values based on 'dispatch_status' seen before. Wait, 'received' is for dispatches. Let's use 'adjustment' if it exists. 
-
       if (locationType === "store") {
         if (type === "in") movementPayload.to_store_id = locationId;
         else movementPayload.from_store_id = locationId;
@@ -186,18 +207,9 @@ export function useInventoryData() {
         movementPayload[type === "in" ? "to_location_type" : "from_location_type"] = "factory";
       }
 
-      // Try inserting the movement (ignoring type validation error if any by casting or let supabase handle it)
-      // I'll actually query the movement type from the DB if this fails, but let's assume 'transfer' is valid.
-      movementPayload.movement_type = "transfer"; // the safest bet between locations, but since it's a manual adjustment maybe 'adjustment' exists.
-      
       const { error: moveError } = await supabase.from("inventory_movements").insert(movementPayload as any);
-      // Even if movement fails due to enum, we still want to update balance. Wait, no, we should transactionally do it.
-      if (moveError) {
-          console.warn("Movement insert failed, maybe enum mismatch. Details:", moveError);
-          // If we fail because of enum, let's just proceed to update the balance anyway for UX.
-      }
+      if (moveError) console.warn("Movement insert failed, maybe enum mismatch. Details:", moveError);
 
-      // 3. Actualizar el balance manualmente (por si no hay triggers en DB)
       const newQuantity = type === "in" ? currentQuantity + quantity : currentQuantity - quantity;
       
       const { error: balError } = await supabase
@@ -215,12 +227,60 @@ export function useInventoryData() {
     },
   });
 
+  const createCategoryMutation = useMutation({
+    mutationFn: async ({ name, description }: { name: string, description?: string }) => {
+      const { error } = await supabase.from("product_categories").insert({
+        name,
+        description: description || null,
+        is_active: true
+      });
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product_categories"] });
+    }
+  });
+
+  const createProductMutation = useMutation({
+    mutationFn: async (data: {
+      name: string;
+      category_id: string;
+      unit_value: number;
+      cost_value?: number;
+      unit_name?: string;
+      sku?: string;
+      description?: string;
+    }) => {
+      const { error } = await supabase.from("products").insert({
+        name: data.name,
+        category_id: data.category_id,
+        unit_value: data.unit_value,
+        cost_value: data.cost_value || 0,
+        unit_name: data.unit_name || "unidades",
+        sku: data.sku || null,
+        description: data.description || null,
+        is_active: true,
+      });
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
+    }
+  });
+
   return {
     inventory: inventoryQuery.data || [],
-    isLoading: inventoryQuery.isLoading,
-    error: inventoryQuery.error,
+    categories: categoriesQuery.data || [],
+    isLoading: inventoryQuery.isLoading || categoriesQuery.isLoading,
+    error: inventoryQuery.error || categoriesQuery.error,
     getMovementsQuery,
     addMovement: addMovementMutation.mutateAsync,
-    isUpdating: addMovementMutation.isPending
+    isUpdating: addMovementMutation.isPending,
+    createCategory: createCategoryMutation.mutateAsync,
+    isCreatingCategory: createCategoryMutation.isPending,
+    createProduct: createProductMutation.mutateAsync,
+    isCreatingProduct: createProductMutation.isPending,
   };
 }
