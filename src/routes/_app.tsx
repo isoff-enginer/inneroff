@@ -5,6 +5,7 @@ import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { useSession } from "@/features/auth/session";
 import { MOCK_NOTIFICATIONS } from "@/features/dashboard/mock-data";
+import { DeviceProtectionOverlay } from "@/features/devices/components/DeviceProtectionOverlay";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -35,8 +36,10 @@ function AppLayout() {
   const unread = MOCK_NOTIFICATIONS.filter((n) => !n.read).length;
 
   return (
-    <AppShell unreadCount={unread}>
-      <Outlet />
-    </AppShell>
+    <DeviceProtectionOverlay>
+      <AppShell unreadCount={unread}>
+        <Outlet />
+      </AppShell>
+    </DeviceProtectionOverlay>
   );
 }
