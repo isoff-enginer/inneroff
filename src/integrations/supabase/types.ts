@@ -1085,6 +1085,7 @@ export type Database = {
           id: string
           message_type: Database["public"]["Enums"]["message_type"]
           sender_id: string
+          sender_device_id?: string | null
           sent_at: string
         }
         Insert: {
@@ -1096,6 +1097,7 @@ export type Database = {
           id?: string
           message_type?: Database["public"]["Enums"]["message_type"]
           sender_id: string
+          sender_device_id?: string | null
           sent_at?: string
         }
         Update: {
@@ -1107,6 +1109,7 @@ export type Database = {
           id?: string
           message_type?: Database["public"]["Enums"]["message_type"]
           sender_id?: string
+          sender_device_id?: string | null
           sent_at?: string
         }
         Relationships: [

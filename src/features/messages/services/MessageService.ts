@@ -6,6 +6,7 @@ import { AADContext } from '../crypto/DoubleRatchet';
 import { getProtectedData, removeProtectedData } from '../crypto/KeyStore';
 import { bootstrapAsAlice, bootstrapAsBob } from '../crypto/SessionBootstrap';
 import { PreKeyBundle } from '../crypto/PreKeyBundle';
+import { encryptMessageKeyForDevice, EnvelopeContext } from '../crypto/EnvelopeEncryption';
 
 export interface BootstrapMetadata {
     senderIdentityPubKeyB64: string;
@@ -75,7 +76,35 @@ export class MessageService {
         const envelopesToInsert: any[] = [];
 
         for (const device of devices) {
-            if (device.id === localDeviceId) continue;
+            if (device.id === localDeviceId) {
+                // Generar SELF-ENVELOPE
+                const localPublicIdentity = await getProtectedData('identity', 'local_device_identity_public');
+                if (!localPublicIdentity) throw new Error("Missing local identity for self-envelope");
+
+                const envContext: EnvelopeContext = {
+                    protocol_version: 1,
+                    message_id: messageId,
+                    conversation_id: conversationId,
+                    sender_device_id: localDeviceId,
+                    recipient_device_id: localDeviceId,
+                    key_algorithm: 'SELF-X25519-ENVELOPE-v1',
+                    envelope_version: 1
+                };
+
+                const selfEnvelope = encryptMessageKeyForDevice(
+                    contentKey,
+                    base64ToBytes(localPublicIdentity.public_agreement_key_b64),
+                    envContext
+                );
+
+                envelopesToInsert.push({
+                    message_id: messageId,
+                    device_id: localDeviceId,
+                    encrypted_message_key: JSON.stringify(selfEnvelope),
+                    key_algorithm: 'SELF-X25519-ENVELOPE-v1'
+                });
+                continue;
+            }
 
             const sessionId = `session_${localDeviceId}_${device.id}`;
             let hasSession = !!(await getProtectedData('session', sessionId));
@@ -167,7 +196,7 @@ export class MessageService {
 
         contentKey.fill(0);
 
-        type PendingMessageInsert = { id: string, conversation_id: string, sender_id: string, ciphertext: string, message_type: string };
+        type PendingMessageInsert = { id: string, conversation_id: string, sender_id: string, sender_device_id: string, ciphertext: string, message_type: string };
         type PendingEnvelopeInsert = { message_id: string, device_id: string, encrypted_message_key: string, key_algorithm: string };
         
         // @ts-expect-error: Tablas pendientes de la Fase 5.2 (schema auditado)
@@ -175,6 +204,7 @@ export class MessageService {
             id: messageId,
             conversation_id: conversationId,
             sender_id: senderId,
+            sender_device_id: localDeviceId,
             ciphertext: bytesToBase64(contentCiphertext),
             message_type: 'text'
         } as PendingMessageInsert);
