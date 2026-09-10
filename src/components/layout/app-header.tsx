@@ -12,6 +12,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useSession } from "@/features/auth/session";
@@ -28,6 +38,7 @@ function initials(name: string) {
 export function AppHeader({ unreadCount = 0 }: { unreadCount?: number }) {
   const { user, role, signOut } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-2 border-b border-border bg-background/85 px-4 backdrop-blur sm:px-6">
@@ -96,13 +107,36 @@ export function AppHeader({ unreadCount = 0 }: { unreadCount?: number }) {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild>
-              <button className="w-full cursor-pointer" onClick={() => signOut()}>
+              <button 
+                className="w-full cursor-pointer" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setIsLogoutOpen(true);
+                }}
+              >
                 <LogOut className="size-4 mr-2" aria-hidden="true" />
                 Cerrar sesión
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <AlertDialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Cerrar sesión</AlertDialogTitle>
+              <AlertDialogDescription>
+                ¿Seguro que quieres cerrar sesión en este dispositivo?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={() => signOut()}>
+                Cerrar sesión
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </header>
   );

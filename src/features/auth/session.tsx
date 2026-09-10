@@ -119,7 +119,16 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setIsLoading(true);
-    await supabase.auth.signOut();
+    console.log("[Auth] Signing out");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      console.log("[Auth] Sign out successful");
+    } catch (err: any) {
+      console.error("[Auth] Sign out failed:", err);
+      toast.error("Error al cerrar sesión.");
+      setIsLoading(false);
+    }
   };
 
   const registerDevice = async (pin: string) => {
