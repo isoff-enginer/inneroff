@@ -1,13 +1,23 @@
 import { supabase } from '@/integrations/supabase/client';
 import { SessionManager } from '../crypto/SessionManager';
-import { randomBytes, encryptSymmetric, bytesToBase64, base64ToBytes } from '../crypto/CryptoCore';
+import { randomBytes, encryptSymmetric, decryptSymmetric, bytesToBase64, base64ToBytes } from '../crypto/CryptoCore';
 import { DoubleRatchetHeader } from '../crypto/SessionTypes';
 import { AADContext } from '../crypto/DoubleRatchet';
-import { getProtectedData } from '../crypto/KeyStore';
+import { getProtectedData, removeProtectedData } from '../crypto/KeyStore';
+import { bootstrapAsAlice, bootstrapAsBob } from '../crypto/SessionBootstrap';
+import { PreKeyBundle } from '../crypto/PreKeyBundle';
+
+export interface BootstrapMetadata {
+    senderIdentityPubKeyB64: string;
+    senderEphemeralPubKeyB64: string;
+    targetSignedPreKeyId: number;
+    targetOneTimePreKeyId: number | null;
+}
 
 export interface SerializedRatchetMessage {
     header: DoubleRatchetHeader;
     ratchetCiphertextB64: string;
+    bootstrap?: BootstrapMetadata;
 }
 
 export class MessageService {
@@ -19,9 +29,6 @@ export class MessageService {
 
     /**
      * Envía un mensaje encriptado E2EE.
-     * 1. Genera ContentKey aleatoria.
-     * 2. Cifra el plaintext con la ContentKey.
-     * 3. Para cada dispositivo destino, cifra la ContentKey con el Double Ratchet.
      */
     async encryptAndSend(
         conversationId: string,
@@ -62,29 +69,71 @@ export class MessageService {
         const messageId = crypto.randomUUID();
         const rawPlaintext = new TextEncoder().encode(plaintext);
         
-        // AAD para el ContentCiphertext (Capa base, NO es el AAD del Ratchet)
         const contentAad = new TextEncoder().encode(`V1|${conversationId}|${messageId}`);
         const contentCiphertext = encryptSymmetric(rawPlaintext, contentKey, contentAad);
 
-        // 5. Preparar transacciones de base de datos
         const envelopesToInsert: any[] = [];
 
         for (const device of devices) {
-            // No enviar envelope a nosotros mismos si no es necesario,
-            // pero usualmente sí queremos para poder descifrar nuestros propios mensajes en otro dispositivo propio.
-            // Para simplificar, generamos envelopes para TODOS los dispositivos (incluyendo otros nuestros).
-            // A nuestro MISMO dispositivo no es estrictamente necesario, pero lo saltaremos.
             if (device.id === localDeviceId) continue;
 
             const sessionId = `session_${localDeviceId}_${device.id}`;
             let hasSession = !!(await getProtectedData('session', sessionId));
+            
+            let bootstrapMeta: BootstrapMetadata | undefined = undefined;
 
             if (!hasSession) {
-                // Hacer Bootstrap X3DH
-                // Mockeado por ahora ya que no existe una tabla pre_keys_bundle en Supabase.
-                // En un entorno real consultaríamos RPC get_pre_key_bundle(device_id)
-                // Lanzamos error documentado:
-                throw new Error("PROTOCOL CHANGE REQUIRED: Missing Pre-Key distribution endpoint in Supabase to bootstrap new sessions. Cannot initiate Ratchet.");
+                // Fetch Remote Pre-Key Bundle via RPC
+                const { data: bundleData, error: bundleErr } = await supabase.rpc('get_device_prekey_bundle', {
+                    p_device_id: device.id
+                });
+                
+                if (bundleErr || !bundleData) {
+                    throw new Error(`Failed to fetch Pre-Key bundle for device ${device.id}`);
+                }
+
+                // Type casting the response (the RPC returns snake_case, adapt to PreKeyBundle)
+                const bundle = bundleData as any;
+                const preKeyBundle: PreKeyBundle = {
+                    deviceId: bundle.device_id,
+                    identitySigningKeyB64: bundle.identity_signing_key_b64,
+                    identityAgreementKeyB64: bundle.identity_agreement_key_b64,
+                    signedPreKey: {
+                        keyId: bundle.signed_pre_key.key_id,
+                        publicKeyB64: bundle.signed_pre_key.public_key_b64,
+                        signatureB64: bundle.signed_pre_key.signature_b64
+                    },
+                    oneTimePreKey: bundle.one_time_pre_key ? {
+                        keyId: bundle.one_time_pre_key.key_id,
+                        publicKeyB64: bundle.one_time_pre_key.public_key_b64
+                    } : null,
+                    protocolVersion: bundle.protocol_version || 1
+                };
+
+                const localPublicIdentity = await getProtectedData('identity', 'local_device_identity_public');
+                if (!localPublicIdentity) throw new Error("Missing local identity for bootstrap");
+
+                // Execute Bootstrap
+                const { sharedSecret, aliceEphemeral } = bootstrapAsAlice(
+                    localIdentityPrivKey,
+                    preKeyBundle
+                );
+
+                await this.sessionManager.initializeSessionAsAlice(
+                    sessionId,
+                    localDeviceId,
+                    device.id,
+                    preKeyBundle.identitySigningKeyB64,
+                    sharedSecret,
+                    base64ToBytes(preKeyBundle.signedPreKey.publicKeyB64)
+                );
+
+                bootstrapMeta = {
+                    senderIdentityPubKeyB64: localPublicIdentity.public_agreement_key_b64,
+                    senderEphemeralPubKeyB64: bytesToBase64(aliceEphemeral.publicKey),
+                    targetSignedPreKeyId: preKeyBundle.signedPreKey.keyId,
+                    targetOneTimePreKeyId: preKeyBundle.oneTimePreKey ? preKeyBundle.oneTimePreKey.keyId : null
+                };
             }
 
             const context: AADContext = {
@@ -96,7 +145,6 @@ export class MessageService {
                 session_id: sessionId
             };
 
-            // Cifrar la ContentKey pasando por el Ratchet
             const { header, ciphertext: ratchetCiphertext } = await this.sessionManager.encryptMessage(
                 sessionId,
                 contentKey,
@@ -105,7 +153,8 @@ export class MessageService {
 
             const serialized: SerializedRatchetMessage = {
                 header,
-                ratchetCiphertextB64: bytesToBase64(ratchetCiphertext)
+                ratchetCiphertextB64: bytesToBase64(ratchetCiphertext),
+                bootstrap: bootstrapMeta
             };
 
             envelopesToInsert.push({
@@ -116,19 +165,12 @@ export class MessageService {
             });
         }
 
-        contentKey.fill(0); // Zeroize
+        contentKey.fill(0);
 
-        // 6. Insertar en base de datos (Supabase no soporta transacciones directas desde el frontend, 
-        // requeriría un RPC. Usamos Promise.all para simular atomicidad básica o inserción secuencial).
-        
-        // DOCUMENTACIÓN DE TIPOS: `messages` y `message_key_envelopes` no están en `src/integrations/supabase/types.ts`
-        // porque estas tablas pertenecen al diseño de la Fase 5.2 y aún NO han sido creadas en el esquema ni generadas 
-        // mediante `supabase gen types`.
-        // Para evitar el uso de `as any` como parche silencioso, forzamos los tipos temporales:
         type PendingMessageInsert = { id: string, conversation_id: string, sender_id: string, ciphertext: string, message_type: string };
         type PendingEnvelopeInsert = { message_id: string, device_id: string, encrypted_message_key: string, key_algorithm: string };
         
-        // @ts-expect-error: Tablas pendientes de la Fase 5.2
+        // @ts-expect-error: Tablas pendientes de la Fase 5.2 (schema auditado)
         const { error: msgErr } = await supabase.from('messages').insert({
             id: messageId,
             conversation_id: conversationId,
@@ -140,12 +182,111 @@ export class MessageService {
         if (msgErr) throw new Error("Failed to insert message ciphertext");
 
         if (envelopesToInsert.length > 0) {
-            // @ts-expect-error: Tablas pendientes de la Fase 5.2
+            // @ts-expect-error
             const { error: envErr } = await supabase.from('message_key_envelopes').insert(envelopesToInsert as PendingEnvelopeInsert[]);
             if (envErr) {
-                // Fuga de transacción. Estrategia de recuperación: El mensaje principal está, pero nadie lo puede leer.
                 console.error("Failed to insert envelopes", envErr);
             }
         }
+    }
+
+    /**
+     * Bob recibe el mensaje, realiza el X3DH inverso si es necesario,
+     * y descifra el ciphertext.
+     */
+    async receiveAndDecrypt(
+        conversationId: string,
+        messageId: string,
+        senderDeviceId: string,
+        localDeviceId: string,
+        senderIdentitySigningKeyB64: string, // Se conoce del sender desde antes (e.g., al cargar miembros)
+        serializedEnvelope: string,
+        baseCiphertextB64: string
+    ): Promise<string> {
+        const envelope: SerializedRatchetMessage = JSON.parse(serializedEnvelope);
+        const sessionId = `session_${localDeviceId}_${senderDeviceId}`;
+        
+        let hasSession = !!(await getProtectedData('session', sessionId));
+
+        if (!hasSession) {
+            if (!envelope.bootstrap) {
+                throw new Error("Missing session and no bootstrap metadata provided.");
+            }
+
+            const localIdentityPriv = await getProtectedData('identity', 'local_device_identity_private');
+            if (!localIdentityPriv) throw new Error("Missing local identity private keys");
+
+            const spkPriv = await getProtectedData('signed_pre_key', `private_${envelope.bootstrap.targetSignedPreKeyId}`);
+            if (!spkPriv) throw new Error("Missing required Signed Pre-Key for bootstrap");
+
+            let opkPriv: Uint8Array | undefined = undefined;
+            if (envelope.bootstrap.targetOneTimePreKeyId !== null) {
+                opkPriv = await getProtectedData('one_time_pre_keys', `private_${envelope.bootstrap.targetOneTimePreKeyId}`);
+                if (!opkPriv) {
+                    throw new Error("Missing required One-Time Pre-Key for bootstrap. Message might be a replay or OPK already consumed.");
+                }
+            }
+
+            const sharedSecret = bootstrapAsBob(
+                base64ToBytes(localIdentityPriv.private_agreement_key_b64),
+                base64ToBytes(spkPriv),
+                envelope.bootstrap.senderIdentityPubKeyB64,
+                envelope.bootstrap.senderEphemeralPubKeyB64,
+                opkPriv ? base64ToBytes(opkPriv) : undefined
+            );
+
+            // Reconstruir la key pair del SPK para inicializar el estado del Ratchet de Bob
+            const spkPub = await getProtectedData('signed_pre_key', `public_${envelope.bootstrap.targetSignedPreKeyId}`);
+            const bobDHs = {
+                privateKey: base64ToBytes(spkPriv),
+                publicKey: base64ToBytes(spkPub.public_key_b64)
+            };
+
+            await this.sessionManager.initializeSessionAsBob(
+                sessionId,
+                localDeviceId,
+                senderDeviceId,
+                senderIdentitySigningKeyB64,
+                sharedSecret,
+                bobDHs
+            );
+
+            // Inutilizar la OPK solo DESPUÉS de un bootstrap exitoso
+            if (envelope.bootstrap.targetOneTimePreKeyId !== null) {
+                await removeProtectedData('one_time_pre_keys', `private_${envelope.bootstrap.targetOneTimePreKeyId}`);
+            }
+        } else if (envelope.bootstrap) {
+            // Replay del bootstrap inicial, la sesión ya existe.
+            // Ignoramos el bootstrap y procesamos normalmente con el Ratchet.
+            // El Ratchet manejará si el message_id (header) es un duplicado o está out-of-order.
+        }
+
+        const context: AADContext = {
+            protocol_version: 1,
+            conversation_id: conversationId,
+            message_id: messageId,
+            sender_device_id: senderDeviceId,
+            recipient_device_id: localDeviceId,
+            session_id: sessionId
+        };
+
+        const contentKey = await this.sessionManager.decryptMessage(
+            sessionId,
+            envelope.header,
+            base64ToBytes(envelope.ratchetCiphertextB64),
+            context,
+            senderIdentitySigningKeyB64
+        );
+
+        const contentAad = new TextEncoder().encode(`V1|${conversationId}|${messageId}`);
+        const plaintextBytes = decryptSymmetric(
+            base64ToBytes(baseCiphertextB64),
+            contentKey,
+            contentAad
+        );
+
+        contentKey.fill(0); // Zeroize
+
+        return new TextDecoder().decode(plaintextBytes);
     }
 }

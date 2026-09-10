@@ -29,9 +29,14 @@ export class DeviceRegistrationService {
         let isNewLocalDevice = false;
 
         if (!publicRecord) {
+            console.log("[DeviceRegistration] identity-local: Generating new local identity");
             // Dispositivo totalmente nuevo localmente
             publicRecord = await generateAndSaveDeviceIdentity(pin);
             isNewLocalDevice = true;
+        } else {
+            console.log("[DeviceRegistration] identity-local: Reusing existing local identity", {
+                deviceId: publicRecord.device_id
+            });
         }
 
         const deviceId = publicRecord.device_id;
@@ -52,10 +57,12 @@ export class DeviceRegistrationService {
 
         // Idempotencia: Si ya está registrado y activo, no hacemos nada más.
         if (existingDevice && existingDevice.status === 'active') {
+            console.log("[DeviceRegistration] complete: Device already active in Supabase");
             return; 
         }
 
         if (existingDevice && existingDevice.status !== 'active') {
+            console.log("[DeviceRegistration] identity-local: Device revoked in Supabase, rotating identity");
             // Si la identidad local está atada a un dispositivo revocado, habría que rotarla.
             // Para mantenerlo simple, generamos una nueva identidad y pisamos la local.
             publicRecord = await generateAndSaveDeviceIdentity(pin);
@@ -68,6 +75,11 @@ export class DeviceRegistrationService {
         // NOTA: No podemos forzar un UUID nuestro en la columna `id` de Supabase si la tabla la genera con gen_random_uuid()
         // Generamos un fingerprint basado en la llave.
         const fingerprint = identitySigningPublicKey.substring(0, 32);
+
+        console.log("[DeviceRegistration] authorized-device: Attempting insert", {
+            deviceId: publicRecord.device_id,
+            platform: navigator.platform || 'web'
+        });
 
         const { data: insertedDevice, error: insertErr } = await supabase
             .from('authorized_devices')
@@ -85,20 +97,52 @@ export class DeviceRegistrationService {
             .single();
 
         if (insertErr || !insertedDevice) {
-            console.error("Error registering authorized device:", insertErr);
-            throw new Error("Failed to register device in Supabase.");
+            console.error("[DeviceRegistration] authorized-device: FAILED", {
+                code: insertErr?.code,
+                message: insertErr?.message,
+                details: insertErr?.details,
+                hint: insertErr?.hint
+            });
+            
+            // Re-throw preserving error details for upper layers
+            const err = new Error("Error al registrar el dispositivo.");
+            (err as any).originalError = insertErr;
+            throw err;
         }
 
+        console.log("[DeviceRegistration] authorized-device: SUCCESS", { serverDeviceId: insertedDevice.id });
         const serverDeviceId = insertedDevice.id;
 
         // Necesitamos desbloquear la identidad en memoria para que PreKeyService pueda firmar el SPK
         const unlockedIdentity = await loadAndUnlockDeviceIdentity(pin);
 
         // 4. Publicar Pre-Keys de forma segura
-        // Publicar Signed Pre-Key y el Identity Agreement Key (X25519)
-        await this.preKeyService.publishSignedPreKey(serverDeviceId, unlockedIdentity, identityAgreementPublicKey);
+        // 4. Publicar Pre-Keys de forma segura
+        console.log("[DeviceRegistration] signed-prekey: Attempting upload");
+        try {
+            await this.preKeyService.publishSignedPreKey(serverDeviceId, unlockedIdentity, identityAgreementPublicKey);
+            console.log("[DeviceRegistration] signed-prekey: SUCCESS");
+        } catch (spkErr: any) {
+            console.error("[DeviceRegistration] signed-prekey: FAILED", {
+                name: spkErr.name,
+                message: spkErr.message
+            });
+            throw spkErr;
+        }
 
         // 5. Publicar 100 One-Time Pre-Keys
-        await this.preKeyService.publishOneTimePreKeys(serverDeviceId, 100);
+        console.log("[DeviceRegistration] opk-generation: Attempting upload of 100 OPKs");
+        try {
+            await this.preKeyService.publishOneTimePreKeys(serverDeviceId, 100);
+            console.log("[DeviceRegistration] opk-upload: SUCCESS");
+        } catch (opkErr: any) {
+            console.error("[DeviceRegistration] opk-upload: FAILED", {
+                name: opkErr.name,
+                message: opkErr.message
+            });
+            throw opkErr;
+        }
+
+        console.log("[DeviceRegistration] complete: Device fully registered");
     }
 }

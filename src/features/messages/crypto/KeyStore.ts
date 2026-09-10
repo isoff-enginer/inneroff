@@ -47,6 +47,9 @@ function makeId(namespace: KeyNamespace, keyId: string): string {
 }
 
 export async function saveProtectedData(namespace: KeyNamespace, keyId: string, data: any): Promise<void> {
+    if (typeof indexedDB === 'undefined') {
+        return saveProtectedDataMemory(namespace, keyId, data);
+    }
     const db = await getDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -65,6 +68,9 @@ export async function saveProtectedData(namespace: KeyNamespace, keyId: string, 
 }
 
 export async function getProtectedData(namespace: KeyNamespace, keyId: string): Promise<any | null> {
+    if (typeof indexedDB === 'undefined') {
+        return getProtectedDataMemory(namespace, keyId);
+    }
     const db = await getDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readonly');
@@ -84,6 +90,9 @@ export async function getProtectedData(namespace: KeyNamespace, keyId: string): 
 }
 
 export async function removeProtectedData(namespace: KeyNamespace, keyId: string): Promise<void> {
+    if (typeof indexedDB === 'undefined') {
+        return removeProtectedDataMemory(namespace, keyId);
+    }
     const db = await getDB();
     return new Promise((resolve, reject) => {
         const tx = db.transaction(STORE_NAME, 'readwrite');
@@ -109,4 +118,8 @@ export async function getProtectedDataMemory(namespace: KeyNamespace, keyId: str
 
 export async function removeProtectedDataMemory(namespace: KeyNamespace, keyId: string): Promise<void> {
     memoryFallback.delete(makeId(namespace, keyId));
+}
+
+export function _resetMemoryFallback(): void {
+    memoryFallback.clear();
 }
