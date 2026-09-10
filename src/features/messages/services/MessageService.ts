@@ -7,6 +7,7 @@ import { getProtectedData, removeProtectedData } from '../crypto/KeyStore';
 import { bootstrapAsAlice, bootstrapAsBob } from '../crypto/SessionBootstrap';
 import { PreKeyBundle } from '../crypto/PreKeyBundle';
 import { encryptMessageKeyForDevice, EnvelopeContext } from '../crypto/EnvelopeEncryption';
+import { UnlockedDeviceIdentity } from '../crypto/DeviceIdentity';
 
 export interface BootstrapMetadata {
     senderIdentityPubKeyB64: string;
@@ -35,7 +36,7 @@ export class MessageService {
         conversationId: string,
         plaintext: string,
         localDeviceId: string,
-        localIdentityPrivKey: Uint8Array
+        unlockedIdentity: UnlockedDeviceIdentity
     ): Promise<void> {
         // 1. Validar identidad local y obtener sender ID
         const { data: authData } = await supabase.auth.getUser();
@@ -78,8 +79,6 @@ export class MessageService {
         for (const device of devices) {
             if (device.id === localDeviceId) {
                 // Generar SELF-ENVELOPE
-                const localPublicIdentity = await getProtectedData('identity', 'local_device_identity_public');
-                if (!localPublicIdentity) throw new Error("Missing local identity for self-envelope");
 
                 const envContext: EnvelopeContext = {
                     protocol_version: 1,
@@ -93,7 +92,7 @@ export class MessageService {
 
                 const selfEnvelope = encryptMessageKeyForDevice(
                     contentKey,
-                    base64ToBytes(localPublicIdentity.public_agreement_key_b64),
+                    unlockedIdentity.publicAgreementKey,
                     envContext
                 );
 
@@ -139,12 +138,9 @@ export class MessageService {
                     protocolVersion: bundle.protocol_version || 1
                 };
 
-                const localPublicIdentity = await getProtectedData('identity', 'local_device_identity_public');
-                if (!localPublicIdentity) throw new Error("Missing local identity for bootstrap");
-
                 // Execute Bootstrap
                 const { sharedSecret, aliceEphemeral } = bootstrapAsAlice(
-                    localIdentityPrivKey,
+                    unlockedIdentity.privateAgreementKey,
                     preKeyBundle
                 );
 
@@ -158,7 +154,7 @@ export class MessageService {
                 );
 
                 bootstrapMeta = {
-                    senderIdentityPubKeyB64: localPublicIdentity.public_agreement_key_b64,
+                    senderIdentityPubKeyB64: bytesToBase64(unlockedIdentity.publicAgreementKey),
                     senderEphemeralPubKeyB64: bytesToBase64(aliceEphemeral.publicKey),
                     targetSignedPreKeyId: preKeyBundle.signedPreKey.keyId,
                     targetOneTimePreKeyId: preKeyBundle.oneTimePreKey ? preKeyBundle.oneTimePreKey.keyId : null
@@ -231,7 +227,8 @@ export class MessageService {
         localDeviceId: string,
         senderIdentitySigningKeyB64: string, // Se conoce del sender desde antes (e.g., al cargar miembros)
         serializedEnvelope: string,
-        baseCiphertextB64: string
+        baseCiphertextB64: string,
+        unlockedIdentity: UnlockedDeviceIdentity
     ): Promise<string> {
         const envelope: SerializedRatchetMessage = JSON.parse(serializedEnvelope);
         const sessionId = `session_${localDeviceId}_${senderDeviceId}`;
@@ -242,9 +239,6 @@ export class MessageService {
             if (!envelope.bootstrap) {
                 throw new Error("Missing session and no bootstrap metadata provided.");
             }
-
-            const localIdentityPriv = await getProtectedData('identity', 'local_device_identity_private');
-            if (!localIdentityPriv) throw new Error("Missing local identity private keys");
 
             const spkPriv = await getProtectedData('signed_pre_key', `private_${envelope.bootstrap.targetSignedPreKeyId}`);
             if (!spkPriv) throw new Error("Missing required Signed Pre-Key for bootstrap");
@@ -258,7 +252,7 @@ export class MessageService {
             }
 
             const sharedSecret = bootstrapAsBob(
-                base64ToBytes(localIdentityPriv.private_agreement_key_b64),
+                unlockedIdentity.privateAgreementKey,
                 base64ToBytes(spkPriv),
                 envelope.bootstrap.senderIdentityPubKeyB64,
                 envelope.bootstrap.senderEphemeralPubKeyB64,

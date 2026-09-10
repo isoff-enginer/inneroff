@@ -13,10 +13,13 @@ export interface DecryptedMessageState {
     status: DecryptionStatus;
 }
 
+import { UnlockedDeviceIdentity } from '../crypto/DeviceIdentity';
+
 export function useDecryptedMessages(
     conversationId: string, 
     messages: any[] | undefined, 
-    localDeviceId: string | undefined
+    localDeviceId: string | undefined,
+    unlockedIdentity: UnlockedDeviceIdentity | null
 ) {
     const [decryptedMap, setDecryptedMap] = useState<Record<string, DecryptedMessageState>>({});
 
@@ -30,11 +33,7 @@ export function useDecryptedMessages(
             const newMap = { ...decryptedMap };
             let hasChanges = false;
 
-            // Pre-cargar identidades locales
-            const localPublicIdentity = await getProtectedData('identity', 'local_device_identity_public');
-            const localPrivateIdentity = await getProtectedData('identity', 'local_device_identity_private');
-
-            if (!localPrivateIdentity || !localPublicIdentity) {
+            if (!unlockedIdentity) {
                 console.error("No local identity available for decryption");
                 return;
             }
@@ -71,7 +70,7 @@ export function useDecryptedMessages(
                         
                         const contentKey = decryptMessageKeyFromEnvelope(
                             parsedEnvelope,
-                            base64ToBytes(localPrivateIdentity.private_agreement_key_b64),
+                            unlockedIdentity.privateAgreementKey,
                             envContext
                         );
 
@@ -139,7 +138,7 @@ export function useDecryptedMessages(
 
     // No queremos re-ejecutar cada vez que el map cambia, solo cuando llegan nuevos mensajes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [messages, conversationId, localDeviceId]);
+    }, [messages, conversationId, localDeviceId, unlockedIdentity]);
 
     return decryptedMap;
 }

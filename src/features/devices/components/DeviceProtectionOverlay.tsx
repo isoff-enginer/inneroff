@@ -1,18 +1,27 @@
 import { useState, useEffect, type ReactNode } from "react";
-import { Loader2, ShieldCheck, AlertCircle } from "lucide-react";
+import { Loader2, ShieldCheck, AlertCircle, LockKeyhole } from "lucide-react";
 import { getProtectedData } from "../../messages/crypto/KeyStore";
 import type { DeviceIdentityPublicRecord } from "../../messages/crypto/DeviceIdentity";
 import { useSession } from "../../auth/session";
+import { useDeviceCrypto } from "../../messages/crypto/DeviceCryptoContext";
 
-type ProtectionState = "checking" | "setup_pin" | "confirm_pin" | "registering" | "error" | "protected";
+type ProtectionState = "checking" | "onboarding" | "confirm_pin" | "registering" | "locked" | "unlocking" | "error" | "protected";
 
 export function DeviceProtectionOverlay({ children }: { children: ReactNode }) {
   const { isAuthenticated, registerDevice } = useSession();
+  const { isUnlocked, unlockWithPin } = useDeviceCrypto();
   
   const [currentState, setCurrentState] = useState<ProtectionState>("checking");
   const [pin, setPin] = useState("");
   const [confirmPin, setConfirmPin] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Reaccionar a cambios en el desbloqueo global
+  useEffect(() => {
+    if (isUnlocked && currentState !== "protected" && currentState !== "checking") {
+      setCurrentState("protected");
+    }
+  }, [isUnlocked, currentState]);
 
   // Solo ejecutar lógica en el cliente
   useEffect(() => {
@@ -35,17 +44,18 @@ export function DeviceProtectionOverlay({ children }: { children: ReactNode }) {
           publicRecord.public_identity_key_b64 &&
           publicRecord.public_agreement_key_b64
         ) {
-          // LOCAL_IDENTITY_EXISTS (válida)
-          setCurrentState("protected");
+          if (isUnlocked) {
+            setCurrentState("protected");
+          } else {
+            setCurrentState("locked");
+          }
         } else {
-          // LOCAL_IDENTITY_MISSING o LOCAL_IDENTITY_INVALID
-          // Asumimos que necesita generar o regenerar una identidad de forma segura.
-          setCurrentState("setup_pin");
+          setCurrentState("onboarding");
         }
       } catch (err) {
         console.error("Error al verificar identidad local", err);
         if (mounted) {
-          setCurrentState("setup_pin"); // Permite reinicializar
+          setCurrentState("onboarding"); // Permite reinicializar
         }
       }
     }
@@ -55,7 +65,7 @@ export function DeviceProtectionOverlay({ children }: { children: ReactNode }) {
     return () => {
       mounted = false;
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, isUnlocked]);
 
   // Si no está autenticado, el overlay no interviene
   if (!isAuthenticated) {
@@ -100,6 +110,8 @@ export function DeviceProtectionOverlay({ children }: { children: ReactNode }) {
       // Verificación defensiva post-registro
       const publicRecord = await getProtectedData('identity', 'local_device_identity_public') as DeviceIdentityPublicRecord | null;
       if (publicRecord?.device_id) {
+        // Desbloquear la identidad recién creada en memoria
+        await unlockWithPin(currentPin);
         setCurrentState("protected");
       } else {
         throw new Error("Local identity missing after registration");
@@ -114,13 +126,36 @@ export function DeviceProtectionOverlay({ children }: { children: ReactNode }) {
     }
   };
 
+  const handleUnlockSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pin.length < 4 || pin.length > 6 || !/^\d+$/.test(pin)) return;
+
+    setErrorMessage("");
+    setCurrentState("unlocking");
+
+    let currentPin = pin;
+
+    try {
+      await unlockWithPin(currentPin);
+      setCurrentState("protected");
+    } catch (err) {
+      setCurrentState("locked");
+      setErrorMessage("PIN incorrecto o identidad no disponible.");
+    } finally {
+      currentPin = "";
+      setPin("");
+    }
+  };
+
   // --- RENDER UI (Minimalista, Estilo iOS) ---
   
-  if (currentState === "registering") {
+  if (currentState === "registering" || currentState === "unlocking") {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center">
         <Loader2 className="size-12 animate-spin text-primary mb-6" />
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Protegiendo dispositivo...</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          {currentState === "unlocking" ? "Desbloqueando..." : "Protegiendo dispositivo..."}
+        </h1>
       </div>
     );
   }
@@ -129,12 +164,16 @@ export function DeviceProtectionOverlay({ children }: { children: ReactNode }) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center">
         <AlertCircle className="size-16 text-destructive mb-6" />
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-2">No pudimos proteger este dispositivo.</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground mb-2">Error de seguridad.</h1>
         <p className="text-[15px] text-muted-foreground mb-10 max-w-sm mx-auto">
-          Inténtalo nuevamente para continuar usando la aplicación de forma segura.
+          No pudimos procesar tu solicitud de forma segura. Inténtalo de nuevo.
         </p>
         <button
-          onClick={() => setCurrentState("setup_pin")}
+          onClick={() => {
+            setPin("");
+            setConfirmPin("");
+            setCurrentState("onboarding");
+          }}
           className="h-14 w-full max-w-xs mx-auto rounded-2xl bg-primary px-8 text-[17px] font-semibold text-primary-foreground active:scale-[0.98] transition-transform"
         >
           Intentar de nuevo
@@ -143,29 +182,38 @@ export function DeviceProtectionOverlay({ children }: { children: ReactNode }) {
     );
   }
 
-  const isSetup = currentState === "setup_pin";
-  const inputValue = isSetup ? pin : confirmPin;
-  const setInputValue = isSetup ? setPin : setConfirmPin;
+  const isSetup = currentState === "onboarding";
+  const isConfirm = currentState === "confirm_pin";
+  const isLocked = currentState === "locked";
+  
+  const inputValue = isSetup || isLocked ? pin : confirmPin;
+  const setInputValue = isSetup || isLocked ? setPin : setConfirmPin;
   const isInputValid = inputValue.length >= 4 && inputValue.length <= 6 && /^\d+$/.test(inputValue);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-6 text-center">
       <div className="w-full max-w-sm">
         <div className="mx-auto mb-6 flex size-16 items-center justify-center rounded-full bg-primary/10">
-          <ShieldCheck className="size-8 text-primary" />
+          {isLocked ? (
+            <LockKeyhole className="size-8 text-primary" />
+          ) : (
+            <ShieldCheck className="size-8 text-primary" />
+          )}
         </div>
         
         <h1 className="text-[28px] font-bold tracking-tight text-foreground mb-3">
-          {isSetup ? "Protege tu dispositivo" : "Confirma tu PIN"}
+          {isSetup ? "Protege tu dispositivo" : isLocked ? "Desbloquea tus mensajes" : "Confirma tu PIN"}
         </h1>
         
         <p className="text-[16px] text-muted-foreground mb-10 leading-relaxed">
           {isSetup 
             ? "Configura un PIN para proteger la identidad de este dispositivo." 
-            : "Ingresa el mismo PIN numérico nuevamente."}
+            : isLocked 
+              ? "Ingresa tu PIN de seguridad." 
+              : "Ingresa el mismo PIN numérico nuevamente."}
         </p>
 
-        <form onSubmit={isSetup ? handlePinSubmit : handleConfirmSubmit} className="flex flex-col items-center">
+        <form onSubmit={isSetup ? handlePinSubmit : isLocked ? handleUnlockSubmit : handleConfirmSubmit} className="flex flex-col items-center">
           <input
             type="password"
             inputMode="numeric"
@@ -195,14 +243,14 @@ export function DeviceProtectionOverlay({ children }: { children: ReactNode }) {
             disabled={!isInputValid}
             className="h-14 w-full rounded-2xl bg-primary px-8 text-[17px] font-semibold text-primary-foreground disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98] transition-transform"
           >
-            {isSetup ? "Continuar" : "Activar seguridad"}
+            {isSetup ? "Continuar" : isLocked ? "Desbloquear" : "Activar seguridad"}
           </button>
           
-          {!isSetup && (
+          {isConfirm && (
             <button
               type="button"
               onClick={() => {
-                setCurrentState("setup_pin");
+                setCurrentState("onboarding");
                 setConfirmPin("");
               }}
               className="mt-4 h-12 w-full text-[15px] font-medium text-muted-foreground hover:text-foreground transition-colors"
