@@ -47,6 +47,7 @@ export class DeviceRegistrationService {
         const { data: existingDevice, error: fetchErr } = await supabase
             .from('authorized_devices')
             .select('status')
+            .eq('user_id', userId)
             .eq('device_public_key', identitySigningPublicKey)
             .maybeSingle();
 
