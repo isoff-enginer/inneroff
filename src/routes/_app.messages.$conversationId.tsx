@@ -16,7 +16,7 @@ import { MessageService } from "@/features/messages/services/MessageService";
 import { SessionManager } from "@/features/messages/crypto/SessionManager";
 import { base64ToBytes } from "@/features/messages/crypto/CryptoCore";
 import { useDecryptedMessages } from "@/features/messages/hooks/useDecryptedMessages";
-import { getServerDeviceId, saveServerDeviceId } from "@/features/messages/crypto/DeviceIdentity";
+import { getServerDeviceId, saveServerDeviceId, type DeviceIdentityPublicRecord } from "@/features/messages/crypto/DeviceIdentity";
 
 export const Route = createFileRoute("/_app/messages/$conversationId")({
   component: ChatFullscreenPage,
@@ -88,18 +88,22 @@ function ChatFullscreenPage() {
         const authUserObj = await supabase.auth.getUser();
         console.log(`[ChatE2EE] authUser=${!!authUserObj.data.user}`);
         
+        let pub: DeviceIdentityPublicRecord | null = null;
         let hasLocalIdentity = false;
         try {
-          const pub = await getProtectedData("identity", "local_device_identity_public");
+          pub = await getProtectedData("identity", "local_device_identity_public") as DeviceIdentityPublicRecord | null;
           hasLocalIdentity = !!pub;
-        } catch (e) {}
+        } catch (e) {
+          pub = null;
+          hasLocalIdentity = false;
+        }
         console.log(`[ChatE2EE] localIdentity=${hasLocalIdentity}`);
 
         let deviceId = getServerDeviceId();
         
         // MIGRACIÓN / SELF-HEAL LOGIC
         if (!deviceId && hasLocalIdentity && pub?.public_identity_key_b64) {
-          console.log(`[ChatE2EE] Missing local device ID but identity exists. Attempting self-heal...`);
+          console.log(`[ChatE2EE] selfHealStarted=true`);
           const { data: devices, error: devErr } = await supabase
             .from("authorized_devices")
             .select("id")
@@ -108,10 +112,11 @@ function ChatFullscreenPage() {
             .eq("status", "active");
             
           if (!devErr && devices) {
+            console.log(`[ChatE2EE] remoteMatchCount=${devices.length}`);
             if (devices.length === 1) {
               deviceId = devices[0].id;
               saveServerDeviceId(deviceId);
-              console.log(`[ChatE2EE] Self-heal successful. Recovered deviceId=${deviceId}`);
+              console.log(`[ChatE2EE] recoveredDeviceId=${deviceId}`);
             } else if (devices.length > 1) {
               console.error(`[ChatE2EE] blockReason=DEVICE_ID_AMBIGUOUS. Multiple active devices found for same public key.`);
               throw new Error("DEVICE_ID_AMBIGUOUS");
@@ -138,6 +143,7 @@ function ChatFullscreenPage() {
           privKey: base64ToBytes(privKeyData.private_agreement_key_b64)
         });
         setCryptoStatus("READY");
+        console.log(`[ChatE2EE] cryptoStatus=READY`);
         console.log(`[ChatE2EE] canBootstrap=true`); // Can bootstrap if it reaches here
       } catch (err) {
         console.error("Crypto init error:", err);
