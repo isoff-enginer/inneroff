@@ -84,10 +84,14 @@ function ChatFullscreenPage() {
   useEffect(() => {
     async function loadCrypto() {
       try {
+        console.log("[ChatE2EE Runtime] origin=", window.location.origin);
         setCryptoStatus("LOADING");
+        console.log(`[ChatE2EE Runtime] STEP_01_AUTH_START`);
         const authUserObj = await supabase.auth.getUser();
-        console.log(`[ChatE2EE] authUser=${!!authUserObj.data.user}`);
+        console.log(`[ChatE2EE Runtime] STEP_02_AUTH_OK`);
+        console.log(`[ChatE2EE Audit] authUserId=${authUserObj.data.user?.id}`);
         
+        console.log(`[ChatE2EE Runtime] STEP_03_IDENTITY_READ_START`);
         let pub: DeviceIdentityPublicRecord | null = null;
         let hasLocalIdentity = false;
         try {
@@ -97,44 +101,58 @@ function ChatFullscreenPage() {
           pub = null;
           hasLocalIdentity = false;
         }
-        console.log(`[ChatE2EE] localIdentity=${hasLocalIdentity}`);
+        console.log(`[ChatE2EE Runtime] STEP_04_IDENTITY_READ_OK`);
+        console.log(`[ChatE2EE Audit] publicIdentityExists=${hasLocalIdentity}`);
 
+        console.log(`[ChatE2EE Runtime] STEP_05_DEVICE_ID_READ`);
         let deviceId = getServerDeviceId();
+        console.log(`[ChatE2EE Audit] localDeviceId=${deviceId || 'missing'}`);
         
         // MIGRACIÓN / SELF-HEAL LOGIC
-        if (!deviceId && hasLocalIdentity && pub?.public_identity_key_b64) {
-          console.log(`[ChatE2EE] selfHealStarted=true`);
-          const { data: devices, error: devErr } = await supabase
-            .from("authorized_devices")
-            .select("id")
-            .eq("user_id", authUserObj.data.user.id)
-            .eq("device_public_key", pub.public_identity_key_b64)
-            .eq("status", "active");
-            
-          if (!devErr && devices) {
-            console.log(`[ChatE2EE] remoteMatchCount=${devices.length}`);
-            if (devices.length === 1) {
-              deviceId = devices[0].id;
-              saveServerDeviceId(deviceId);
-              console.log(`[ChatE2EE] recoveredDeviceId=${deviceId}`);
-            } else if (devices.length > 1) {
-              console.error(`[ChatE2EE] blockReason=DEVICE_ID_AMBIGUOUS. Multiple active devices found for same public key.`);
-              throw new Error("DEVICE_ID_AMBIGUOUS");
+        if (!deviceId && hasLocalIdentity && pub) {
+          console.log(`[ChatE2EE Runtime] STEP_06_SELF_HEAL_START`);
+          console.log(`[ChatE2EE Runtime] STEP_07_PUBLIC_KEY_FIELD`);
+          console.log(`fieldPresent=${!!pub.public_identity_key_b64}`);
+          
+          if (pub.public_identity_key_b64) {
+            console.log(`[ChatE2EE Runtime] STEP_08_REMOTE_QUERY_START`);
+            const { data: devices, error: devErr } = await supabase
+              .from("authorized_devices")
+              .select("id")
+              .eq("user_id", authUserObj.data.user?.id)
+              .eq("device_public_key", pub.public_identity_key_b64)
+              .eq("status", "active");
+              
+            if (devErr) {
+               console.error("[ChatE2EE Audit] Supabase error in self-heal", devErr);
+            }
+              
+            if (!devErr && devices) {
+              console.log(`[ChatE2EE Runtime] STEP_09_REMOTE_QUERY_RESULT count=${devices.length}`);
+              console.log(`[ChatE2EE Audit] remoteMatchCount=${devices.length}`);
+              if (devices.length === 1) {
+                deviceId = devices[0].id;
+                saveServerDeviceId(deviceId);
+                console.log(`[ChatE2EE Runtime] STEP_10_DEVICE_ID_RECOVERED`);
+                console.log(`[ChatE2EE Audit] remoteDeviceId=${deviceId}`);
+              } else if (devices.length > 1) {
+                console.error(`[ChatE2EE Audit] firstFailure=DEVICE_ID_AMBIGUOUS`);
+                throw new Error("DEVICE_ID_AMBIGUOUS");
+              }
             }
           }
         }
 
-        console.log(`[ChatE2EE] localDeviceId=${deviceId || 'missing'}`);
-        console.log(`[ChatE2EE] deviceRegistration=${deviceId ? 'READY' : 'MISSING'}`);
-
+        console.log(`[ChatE2EE Runtime] STEP_11_DEVICE_VALIDATION`);
         if (!deviceId) {
-          console.log(`[ChatE2EE] blockReason=No device ID found in localStorage and self-heal failed`);
+          console.log(`[ChatE2EE Audit] firstFailure=No device ID found`);
           throw new Error("No device ID found");
         }
 
         const privKeyData = await getProtectedData("identity", "local_device_identity_private");
+        console.log(`[ChatE2EE Audit] protectedIdentityExists=${!!privKeyData}`);
         if (!privKeyData) {
-          console.log(`[ChatE2EE] blockReason=No private key found`);
+          console.log(`[ChatE2EE Audit] firstFailure=No private key found`);
           throw new Error("No private key found");
         }
 
@@ -142,12 +160,16 @@ function ChatFullscreenPage() {
           id: deviceId,
           privKey: base64ToBytes(privKeyData.private_agreement_key_b64)
         });
+        console.log(`[ChatE2EE Runtime] STEP_12_CRYPTO_READY`);
         setCryptoStatus("READY");
-        console.log(`[ChatE2EE] cryptoStatus=READY`);
-        console.log(`[ChatE2EE] canBootstrap=true`); // Can bootstrap if it reaches here
+        console.log(`[ChatE2EE Audit] cryptoStatus=READY`);
       } catch (err) {
-        console.error("Crypto init error:", err);
+        console.error("[ChatE2EE Runtime] initialization failed", {
+          name: err instanceof Error ? err.name : "UnknownError",
+          message: err instanceof Error ? err.message : String(err),
+        });
         setCryptoStatus("ERROR");
+        console.log(`[ChatE2EE Audit] cryptoStatus=ERROR`);
       }
     }
     loadCrypto();
