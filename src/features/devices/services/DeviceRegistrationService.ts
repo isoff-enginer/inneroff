@@ -6,6 +6,7 @@ import {
 } from '../../messages/crypto/DeviceIdentity';
 import { PreKeyService } from '../../messages/services/PreKeyService';
 import { getProtectedData } from '../../messages/crypto/KeyStore';
+import { saveServerDeviceId } from '../../messages/crypto/DeviceIdentity';
 
 export class DeviceRegistrationService {
     private preKeyService = new PreKeyService();
@@ -46,7 +47,7 @@ export class DeviceRegistrationService {
         // 2. Verificar estado en Supabase
         const { data: existingDevice, error: fetchErr } = await supabase
             .from('authorized_devices')
-            .select('status')
+            .select('id, status')
             .eq('user_id', userId)
             .eq('device_public_key', identitySigningPublicKey)
             .maybeSingle();
@@ -59,6 +60,7 @@ export class DeviceRegistrationService {
         // Idempotencia: Si ya está registrado y activo, no hacemos nada más.
         if (existingDevice && existingDevice.status === 'active') {
             console.log("[DeviceRegistration] complete: Device already active in Supabase");
+            saveServerDeviceId(existingDevice.id);
             return; 
         }
 
@@ -113,6 +115,8 @@ export class DeviceRegistrationService {
 
         console.log("[DeviceRegistration] authorized-device: SUCCESS", { serverDeviceId: insertedDevice.id });
         const serverDeviceId = insertedDevice.id;
+        
+        saveServerDeviceId(serverDeviceId);
 
         // Necesitamos desbloquear la identidad en memoria para que PreKeyService pueda firmar el SPK
         const unlockedIdentity = await loadAndUnlockDeviceIdentity(pin);

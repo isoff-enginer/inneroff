@@ -16,6 +16,7 @@ import { MessageService } from "@/features/messages/services/MessageService";
 import { SessionManager } from "@/features/messages/crypto/SessionManager";
 import { base64ToBytes } from "@/features/messages/crypto/CryptoCore";
 import { useDecryptedMessages } from "@/features/messages/hooks/useDecryptedMessages";
+import { getServerDeviceId, saveServerDeviceId } from "@/features/messages/crypto/DeviceIdentity";
 
 export const Route = createFileRoute("/_app/messages/$conversationId")({
   component: ChatFullscreenPage,
@@ -84,17 +85,60 @@ function ChatFullscreenPage() {
     async function loadCrypto() {
       try {
         setCryptoStatus("LOADING");
-        const deviceId = localStorage.getItem("local_device_id");
-        if (!deviceId) throw new Error("No device ID found");
+        const authUserObj = await supabase.auth.getUser();
+        console.log(`[ChatE2EE] authUser=${!!authUserObj.data.user}`);
+        
+        let hasLocalIdentity = false;
+        try {
+          const pub = await getProtectedData("identity", "local_device_identity_public");
+          hasLocalIdentity = !!pub;
+        } catch (e) {}
+        console.log(`[ChatE2EE] localIdentity=${hasLocalIdentity}`);
+
+        let deviceId = getServerDeviceId();
+        
+        // MIGRACIÓN / SELF-HEAL LOGIC
+        if (!deviceId && hasLocalIdentity && pub?.public_identity_key_b64) {
+          console.log(`[ChatE2EE] Missing local device ID but identity exists. Attempting self-heal...`);
+          const { data: devices, error: devErr } = await supabase
+            .from("authorized_devices")
+            .select("id")
+            .eq("user_id", authUserObj.data.user.id)
+            .eq("device_public_key", pub.public_identity_key_b64)
+            .eq("status", "active");
+            
+          if (!devErr && devices) {
+            if (devices.length === 1) {
+              deviceId = devices[0].id;
+              saveServerDeviceId(deviceId);
+              console.log(`[ChatE2EE] Self-heal successful. Recovered deviceId=${deviceId}`);
+            } else if (devices.length > 1) {
+              console.error(`[ChatE2EE] blockReason=DEVICE_ID_AMBIGUOUS. Multiple active devices found for same public key.`);
+              throw new Error("DEVICE_ID_AMBIGUOUS");
+            }
+          }
+        }
+
+        console.log(`[ChatE2EE] localDeviceId=${deviceId || 'missing'}`);
+        console.log(`[ChatE2EE] deviceRegistration=${deviceId ? 'READY' : 'MISSING'}`);
+
+        if (!deviceId) {
+          console.log(`[ChatE2EE] blockReason=No device ID found in localStorage and self-heal failed`);
+          throw new Error("No device ID found");
+        }
 
         const privKeyData = await getProtectedData("identity", "local_device_identity_private");
-        if (!privKeyData) throw new Error("No private key found");
+        if (!privKeyData) {
+          console.log(`[ChatE2EE] blockReason=No private key found`);
+          throw new Error("No private key found");
+        }
 
         setDeviceInfo({
           id: deviceId,
           privKey: base64ToBytes(privKeyData.private_agreement_key_b64)
         });
         setCryptoStatus("READY");
+        console.log(`[ChatE2EE] canBootstrap=true`); // Can bootstrap if it reaches here
       } catch (err) {
         console.error("Crypto init error:", err);
         setCryptoStatus("ERROR");
@@ -119,7 +163,7 @@ function ChatFullscreenPage() {
           message_key_envelopes!inner(device_id, encrypted_message_key, key_algorithm)
         `)
         .eq("conversation_id", conversationId)
-        .eq("message_key_envelopes.device_id", localStorage.getItem("local_device_id") || "")
+        .eq("message_key_envelopes.device_id", getServerDeviceId() || "")
         .order("sent_at", { ascending: true });
 
       if (error) throw error;

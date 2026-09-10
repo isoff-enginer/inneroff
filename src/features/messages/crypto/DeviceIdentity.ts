@@ -125,4 +125,30 @@ export async function loadAndUnlockDeviceIdentity(pin: string, useMemoryStoreFor
 export async function destroyLocalDeviceIdentity(useMemoryStoreForTesting = false): Promise<void> {
     await removeStore(IDENTITY_KEY_ID + '_public', useMemoryStoreForTesting);
     await removeStore(IDENTITY_KEY_ID + '_private', useMemoryStoreForTesting);
+    clearServerDeviceId(); // Clear server device id when destroying identity
+}
+
+/**
+ * Helpers centralizados para persistir el UUID del dispositivo autorizado (serverDeviceId)
+ * que asigna Supabase al registrar el dispositivo.
+ */
+const SERVER_DEVICE_ID_KEY = 'server_device_id';
+
+export function saveServerDeviceId(deviceId: string): void {
+    if (typeof window !== 'undefined') {
+        localStorage.setItem(SERVER_DEVICE_ID_KEY, deviceId);
+    }
+}
+
+export function getServerDeviceId(): string | null {
+    if (typeof window !== 'undefined') {
+        return localStorage.getItem(SERVER_DEVICE_ID_KEY);
+    }
+    return null;
+}
+
+export function clearServerDeviceId(): void {
+    if (typeof window !== 'undefined') {
+        localStorage.removeItem(SERVER_DEVICE_ID_KEY);
+    }
 }
