@@ -122,14 +122,21 @@ export function NewMessageModal({ children }: { children: React.ReactNode }) {
   const handleCreateConversation = async (contactId: string) => {
     try {
       setIsCreating(true);
+      console.log(`[NewMessage] target_user_id=${contactId}`);
+      console.log(`[NewMessage] calling create_direct_conversation`);
+      
       const { data, error } = await supabase.rpc("create_direct_conversation", {
         target_user_id: contactId
       });
 
       if (error) {
+        console.error(`[NewMessage] rpc error=${error.code}/${error.message}`);
         throw error;
       }
 
+      console.log(`[NewMessage] rpc result=${data}`);
+      console.log(`[NewMessage] navigating to conversation=${data}`);
+      
       toast.success("Conversación iniciada");
       setOpen(false);
       navigate({ to: "/messages/$conversationId", params: { conversationId: data as string } });
