@@ -33,6 +33,25 @@ function ChatFullscreenPage() {
   const [cryptoStatus, setCryptoStatus] = useState<"LOADING" | "READY" | "ERROR">("LOADING");
   const [deviceInfo, setDeviceInfo] = useState<{ id: string; privKey: Uint8Array } | null>(null);
 
+  const [e2eeDebug, setE2eeDebug] = useState({
+    step: '',
+    authUserId: null as string | null,
+    publicRecordExists: false,
+    signingFieldExists: false,
+    agreementFieldExists: false,
+    localDeviceId: null as string | null,
+    selfHealStarted: false,
+    remoteMatchCount: null as number | null,
+    remoteDeviceId: null as string | null,
+    authorizedDeviceError: null as any,
+    messagesQueryStatus: null as string | null,
+    messagesQueryError: null as any,
+    cryptoStatus: null as string | null,
+    runtimeErrorName: null as string | null,
+    runtimeErrorMessage: null as string | null,
+    origin: null as string | null,
+  });
+
   // 1. Validar membresía y obtener meta de la conversación
   const { data: conversation, isLoading: isConvLoading, error: convErr } = useQuery({
     queryKey: ["conversation", conversationId],
@@ -85,15 +104,12 @@ function ChatFullscreenPage() {
     async function loadCrypto() {
       try {
         console.log("[ChatE2EE Runtime] origin=", window.location.origin);
-        setCryptoStatus("LOADING");
-        console.log(`[ChatE2EE Runtime] STEP_01_AUTH_START`);
+        setE2eeDebug(prev => ({ ...prev, origin: window.location.origin, step: 'STEP_01_AUTH' }));
         const authUserObj = await supabase.auth.getUser();
-        console.log(`[ChatE2EE Runtime] STEP_02_AUTH_OK`);
-        console.log(`[ChatE2EE Audit] authUserId=${authUserObj.data.user?.id}`);
         
-        console.log(`[ChatE2EE Runtime] STEP_03_IDENTITY_READ_START`);
         let pub: DeviceIdentityPublicRecord | null = null;
         let hasLocalIdentity = false;
+        setE2eeDebug(prev => ({ ...prev, step: 'STEP_02_IDENTITY_READ', authUserId: authUserObj.data.user?.id || null }));
         try {
           pub = await getProtectedData("identity", "local_device_identity_public") as DeviceIdentityPublicRecord | null;
           hasLocalIdentity = !!pub;
@@ -101,21 +117,24 @@ function ChatFullscreenPage() {
           pub = null;
           hasLocalIdentity = false;
         }
-        console.log(`[ChatE2EE Runtime] STEP_04_IDENTITY_READ_OK`);
-        console.log(`[ChatE2EE Audit] publicIdentityExists=${hasLocalIdentity}`);
-
-        console.log(`[ChatE2EE Runtime] STEP_05_DEVICE_ID_READ`);
+        
+        setE2eeDebug(prev => ({
+          ...prev,
+          step: 'STEP_03_DEVICE_ID_READ',
+          publicRecordExists: hasLocalIdentity,
+          signingFieldExists: !!pub?.public_identity_key_b64,
+          agreementFieldExists: !!pub?.public_agreement_key_b64,
+        }));
         let deviceId = getServerDeviceId();
+        setE2eeDebug(prev => ({ ...prev, localDeviceId: deviceId || 'missing' }));
         console.log(`[ChatE2EE Audit] localDeviceId=${deviceId || 'missing'}`);
         
         // MIGRACIÓN / SELF-HEAL LOGIC
         if (!deviceId && hasLocalIdentity && pub) {
-          console.log(`[ChatE2EE Runtime] STEP_06_SELF_HEAL_START`);
-          console.log(`[ChatE2EE Runtime] STEP_07_PUBLIC_KEY_FIELD`);
-          console.log(`fieldPresent=${!!pub.public_identity_key_b64}`);
+          setE2eeDebug(prev => ({ ...prev, step: 'STEP_04_SELF_HEAL', selfHealStarted: true }));
           
           if (pub.public_identity_key_b64) {
-            console.log(`[ChatE2EE Runtime] STEP_08_REMOTE_QUERY_START`);
+            setE2eeDebug(prev => ({ ...prev, step: 'STEP_05_AUTHORIZED_DEVICE_QUERY' }));
             const { data: devices, error: devErr } = await supabase
               .from("authorized_devices")
               .select("id")
@@ -124,35 +143,28 @@ function ChatFullscreenPage() {
               .eq("status", "active");
               
             if (devErr) {
-               console.error("[ChatE2EE Audit] Supabase error in self-heal", devErr);
+               setE2eeDebug(prev => ({ ...prev, authorizedDeviceError: { code: devErr.code, message: devErr.message, details: devErr.details, hint: devErr.hint } }));
             }
               
             if (!devErr && devices) {
-              console.log(`[ChatE2EE Runtime] STEP_09_REMOTE_QUERY_RESULT count=${devices.length}`);
-              console.log(`[ChatE2EE Audit] remoteMatchCount=${devices.length}`);
+              setE2eeDebug(prev => ({ ...prev, remoteMatchCount: devices.length }));
               if (devices.length === 1) {
                 deviceId = devices[0].id;
                 saveServerDeviceId(deviceId);
-                console.log(`[ChatE2EE Runtime] STEP_10_DEVICE_ID_RECOVERED`);
-                console.log(`[ChatE2EE Audit] remoteDeviceId=${deviceId}`);
+                setE2eeDebug(prev => ({ ...prev, step: 'STEP_06_DEVICE_RECOVERED', remoteDeviceId: deviceId }));
               } else if (devices.length > 1) {
-                console.error(`[ChatE2EE Audit] firstFailure=DEVICE_ID_AMBIGUOUS`);
                 throw new Error("DEVICE_ID_AMBIGUOUS");
               }
             }
           }
         }
 
-        console.log(`[ChatE2EE Runtime] STEP_11_DEVICE_VALIDATION`);
         if (!deviceId) {
-          console.log(`[ChatE2EE Audit] firstFailure=No device ID found`);
           throw new Error("No device ID found");
         }
 
         const privKeyData = await getProtectedData("identity", "local_device_identity_private");
-        console.log(`[ChatE2EE Audit] protectedIdentityExists=${!!privKeyData}`);
         if (!privKeyData) {
-          console.log(`[ChatE2EE Audit] firstFailure=No private key found`);
           throw new Error("No private key found");
         }
 
@@ -160,23 +172,23 @@ function ChatFullscreenPage() {
           id: deviceId,
           privKey: base64ToBytes(privKeyData.private_agreement_key_b64)
         });
-        console.log(`[ChatE2EE Runtime] STEP_12_CRYPTO_READY`);
         setCryptoStatus("READY");
-        console.log(`[ChatE2EE Audit] cryptoStatus=READY`);
+        setE2eeDebug(prev => ({ ...prev, step: 'STEP_07_CRYPTO_READY', cryptoStatus: "READY" }));
       } catch (err) {
-        console.error("[ChatE2EE Runtime] initialization failed", {
-          name: err instanceof Error ? err.name : "UnknownError",
-          message: err instanceof Error ? err.message : String(err),
-        });
         setCryptoStatus("ERROR");
-        console.log(`[ChatE2EE Audit] cryptoStatus=ERROR`);
+        setE2eeDebug(prev => ({
+          ...prev,
+          cryptoStatus: "ERROR",
+          runtimeErrorName: err instanceof Error ? err.name : "UnknownError",
+          runtimeErrorMessage: err instanceof Error ? err.message : String(err)
+        }));
       }
     }
     loadCrypto();
   }, []);
 
   // 3. Fetch de mensajes (ciphertext)
-  const { data: messages, isLoading: isMsgsLoading } = useQuery({
+  const { data: messages, isLoading: isMsgsLoading, status: msgsStatus, error: msgsError } = useQuery({
     queryKey: ["messages", conversationId],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -199,6 +211,14 @@ function ChatFullscreenPage() {
     },
     refetchInterval: 3000, // Polling temporal hasta integrar realtime channel
   });
+
+  useEffect(() => {
+    setE2eeDebug(prev => ({
+      ...prev,
+      messagesQueryStatus: msgsStatus,
+      messagesQueryError: msgsError ? { name: msgsError.name, message: msgsError.message } : null
+    }));
+  }, [msgsStatus, msgsError]);
 
   // Integramos la lógica de desencriptado
   const decryptedMap = useDecryptedMessages(
@@ -308,6 +328,37 @@ function ChatFullscreenPage() {
             <span>Sesión E2EE no verificada en este dispositivo.</span>
           </div>
         )}
+
+        {/* E2EE DEBUG PANEL */}
+        <div className="p-4 m-4 bg-black/90 text-green-400 text-xs rounded font-mono overflow-x-auto whitespace-pre-wrap">
+          <div className="font-bold border-b border-green-800 pb-2 mb-2">E2EE Debug</div>
+          <div>Step: {e2eeDebug.step}</div>
+          <div>Auth user: {e2eeDebug.authUserId}</div>
+          <div>Public identity: {String(e2eeDebug.publicRecordExists)}</div>
+          <div>Signing key field: {String(e2eeDebug.signingFieldExists)}</div>
+          <div>Agreement key field: {String(e2eeDebug.agreementFieldExists)}</div>
+          <div>Local device ID: {e2eeDebug.localDeviceId}</div>
+          <div>Self-heal started: {String(e2eeDebug.selfHealStarted)}</div>
+          <div>
+            Self heal query executed: {e2eeDebug.selfHealStarted && e2eeDebug.step !== 'STEP_04_SELF_HEAL' ? 'YES' : 'NO'}
+          </div>
+          <div>
+            Remote match count: {e2eeDebug.remoteMatchCount === null ? 'null' 
+              : e2eeDebug.remoteMatchCount === 0 ? '0 (no matching authorized_device)' 
+              : e2eeDebug.remoteMatchCount === 1 ? '1' 
+              : '>1 (ambiguous device identity)'}
+          </div>
+          <div>Recovered device ID: {e2eeDebug.remoteDeviceId}</div>
+          <div>Authorized device error: {e2eeDebug.authorizedDeviceError ? JSON.stringify(e2eeDebug.authorizedDeviceError) : 'null'}</div>
+          <div>Messages query: {e2eeDebug.messagesQueryStatus}</div>
+          <div>Messages query error: {e2eeDebug.messagesQueryError ? JSON.stringify(e2eeDebug.messagesQueryError) : 'null'}</div>
+          <div>Crypto status: {e2eeDebug.cryptoStatus}</div>
+          <div>Runtime error: {e2eeDebug.runtimeErrorName} - {e2eeDebug.runtimeErrorMessage}</div>
+          <div>Origin: {e2eeDebug.origin}</div>
+          <div>localStorage available: {typeof window !== 'undefined' && !!window.localStorage ? 'true' : 'false'}</div>
+          <div>IndexedDB available: {typeof window !== 'undefined' && !!window.indexedDB ? 'true' : 'false'}</div>
+          <div>server_device_id present: {getServerDeviceId() ? 'true' : 'false'}</div>
+        </div>
 
         {isMsgsLoading && (
           <div className="text-center text-xs text-muted-foreground py-4">
