@@ -112,7 +112,8 @@ export function useDecryptedMessages(
                             localDeviceId,
                             senderDevice.device_public_key,
                             myEnvelope.encrypted_message_key,
-                            msg.ciphertext
+                            msg.ciphertext,
+                            unlockedIdentity
                         );
 
                         newMap[msg.id] = {

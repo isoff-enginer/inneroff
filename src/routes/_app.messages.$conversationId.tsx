@@ -32,7 +32,7 @@ function ChatFullscreenPage() {
   const { unlockedIdentity, isUnlocked } = useDeviceCrypto();
   const [text, setText] = useState("");
   const [cryptoStatus, setCryptoStatus] = useState<"LOADING" | "LOCKED" | "READY" | "ERROR">("LOADING");
-  const [deviceInfo, setDeviceInfo] = useState<{ id: string; privKey: Uint8Array } | null>(null);
+  const [deviceInfo, setDeviceInfo] = useState<{ id: string } | null>(null);
 
   // 1. Validar membresía y obtener meta de la conversación
   const { data: conversation, isLoading: isConvLoading, error: convErr } = useQuery({
@@ -113,8 +113,7 @@ function ChatFullscreenPage() {
         }
 
         setDeviceInfo({
-          id: deviceId,
-          privKey: unlockedIdentity.privateAgreementKey
+          id: deviceId
         });
         setCryptoStatus("READY");
       } catch (err) {
@@ -169,7 +168,7 @@ function ChatFullscreenPage() {
   // 4. Enviar Mensaje
   const { mutate: sendMessage, isPending: isSending } = useMutation({
     mutationFn: async (plaintext: string) => {
-      if (cryptoStatus !== "READY" || !deviceInfo) {
+      if (cryptoStatus !== "READY" || !deviceInfo || !unlockedIdentity) {
         throw new Error("No se pudo establecer una sesión segura.");
       }
       const sessionManager = new SessionManager();
@@ -179,7 +178,7 @@ function ChatFullscreenPage() {
         conversationId,
         plaintext,
         deviceInfo.id,
-        deviceInfo.privKey
+        unlockedIdentity
       );
     },
     onSuccess: () => {
