@@ -120,22 +120,20 @@ export class MessageService {
                     throw new Error(`Failed to fetch Pre-Key bundle for device ${device.id}`);
                 }
 
-                // Type casting the response (the RPC returns snake_case, adapt to PreKeyBundle)
+                // Type casting the response (the RPC returns snake_case for device_id, but camelCase for keys)
                 const bundle = bundleData as any;
                 const preKeyBundle: PreKeyBundle = {
-                    deviceId: bundle.device_id,
-                    identitySigningKeyB64: bundle.identity_signing_key_b64,
-                    identityAgreementKeyB64: bundle.identity_agreement_key_b64,
+                    identitySigningKeyB64: bundle.identitySigningKeyB64,
+                    identityAgreementKeyB64: bundle.identityAgreementKeyB64,
                     signedPreKey: {
-                        keyId: bundle.signed_pre_key.key_id,
-                        publicKeyB64: bundle.signed_pre_key.public_key_b64,
-                        signatureB64: bundle.signed_pre_key.signature_b64
+                        keyId: bundle.signedPreKey.keyId,
+                        publicKeyB64: bundle.signedPreKey.publicKeyB64,
+                        signatureB64: bundle.signedPreKey.signatureB64
                     },
-                    oneTimePreKey: bundle.one_time_pre_key ? {
-                        keyId: bundle.one_time_pre_key.key_id,
-                        publicKeyB64: bundle.one_time_pre_key.public_key_b64
-                    } : null,
-                    protocolVersion: bundle.protocol_version || 1
+                    oneTimePreKey: bundle.oneTimePreKey ? {
+                        keyId: bundle.oneTimePreKey.keyId,
+                        publicKeyB64: bundle.oneTimePreKey.publicKeyB64
+                    } : undefined
                 };
 
                 // Execute Bootstrap
