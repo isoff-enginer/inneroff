@@ -203,7 +203,10 @@ export class MessageService {
             message_type: 'text'
         } as PendingMessageInsert);
 
-        if (msgErr) throw new Error("Failed to insert message ciphertext");
+        if (msgErr) {
+            console.error("Failed to insert message ciphertext:", msgErr);
+            throw new Error(`Failed to insert message ciphertext: ${msgErr.message || JSON.stringify(msgErr)}`);
+        }
 
         if (envelopesToInsert.length > 0) {
             // @ts-expect-error
