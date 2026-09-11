@@ -9,6 +9,7 @@ import { useSession } from "@/features/auth/session";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { useNavigate } from "@tanstack/react-router";
+import { getRoleLabel } from "@/lib/utils";
 
 type ContactArea = "Administración" | "Operaciones" | "Fábrica" | "Bodega" | "Tienda";
 
@@ -227,7 +228,7 @@ export function NewMessageModal({ children }: { children: React.ReactNode }) {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">{contact.name}</div>
-                        <div className="text-xs text-muted-foreground truncate">{contact.areas.join(", ")}</div>
+                        <div className="text-xs text-muted-foreground truncate uppercase">{contact.roles.map(getRoleLabel).join(", ")}</div>
                       </div>
                     </button>
                   </li>

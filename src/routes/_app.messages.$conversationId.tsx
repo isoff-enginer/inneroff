@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, getRoleLabel } from "@/lib/utils";
 import { toast } from "sonner";
 
 import { useSession } from "@/features/auth/session";
@@ -209,7 +209,7 @@ function ChatFullscreenPage() {
       );
       if (otherMember) {
         displayName = otherMember.profiles.full_name;
-        areaText = otherMember.profiles.role; 
+        areaText = getRoleLabel(otherMember.profiles.role); 
       }
     } else {
       displayName = conversation.title || "Grupo";

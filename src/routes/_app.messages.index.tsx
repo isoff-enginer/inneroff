@@ -6,7 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, getRoleLabel } from "@/lib/utils";
 
 import { NewMessageModal } from "@/features/messages/components/NewMessageModal";
 import { useSession } from "@/features/auth/session";
@@ -88,6 +88,7 @@ function MessagesIndexPage() {
         return {
           id: conv.id,
           name: displayName,
+          role: displayMember?.role,
           lastMessageAt: lastMsgTime,
           // We can't show ciphertext, so we show a placeholder
           lastMessageText: hasMessages ? "Mensaje cifrado" : "Nueva conversación",
@@ -151,10 +152,17 @@ function MessagesIndexPage() {
                   </Avatar>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-2 mb-0.5">
-                      <span className="truncate font-semibold text-[15px]">
-                        {conversation.name}
-                      </span>
-                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                      <div className="flex flex-col min-w-0">
+                        <span className="truncate font-semibold text-[15px]">
+                          {conversation.name}
+                        </span>
+                        {conversation.role && (
+                          <span className="text-[11px] text-muted-foreground uppercase">
+                            {getRoleLabel(conversation.role)}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground whitespace-nowrap self-start">
                         {formatTime(conversation.lastMessageAt)}
                       </span>
                     </div>

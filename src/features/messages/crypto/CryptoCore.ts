@@ -91,12 +91,19 @@ const NONCE_LENGTH = 12;
 
 export function encryptSymmetric(plaintext: Uint8Array, key: Uint8Array, associatedData?: Uint8Array): Uint8Array {
     if (key.length !== 32) throw new Error("AES-256-GCM requires a 32-byte key");
+    if (!(plaintext instanceof Uint8Array)) throw new Error("plaintext must be Uint8Array");
+    if (associatedData && !(associatedData instanceof Uint8Array)) throw new Error("associatedData must be Uint8Array");
     
     const nonce = randomBytes(NONCE_LENGTH);
-    const cipher = gcm(key, nonce);
+    let cipher: any = gcm(key, nonce);
+    
+    if (associatedData) {
+        if (typeof cipher.withAAD !== 'function') throw new Error("withAAD not supported by this @noble/ciphers version");
+        cipher = cipher.withAAD(associatedData);
+    }
     
     // En @noble/ciphers, cipher.encrypt retorna el ciphertext CON el tag de autenticación adjunto al final
-    const ciphertextWithTag = cipher.encrypt(plaintext, associatedData);
+    const ciphertextWithTag = cipher.encrypt(plaintext);
     
     // Empaquetamos todo junto para el almacenamiento
     const result = new Uint8Array(nonce.length + ciphertextWithTag.length);
@@ -108,15 +115,22 @@ export function encryptSymmetric(plaintext: Uint8Array, key: Uint8Array, associa
 
 export function decryptSymmetric(packedCiphertext: Uint8Array, key: Uint8Array, associatedData?: Uint8Array): Uint8Array {
     if (key.length !== 32) throw new Error("AES-256-GCM requires a 32-byte key");
+    if (!(packedCiphertext instanceof Uint8Array)) throw new Error("packedCiphertext must be Uint8Array");
+    if (associatedData && !(associatedData instanceof Uint8Array)) throw new Error("associatedData must be Uint8Array");
     if (packedCiphertext.length < NONCE_LENGTH + 16) throw new Error("Invalid ciphertext: too short");
 
     const nonce = packedCiphertext.slice(0, NONCE_LENGTH);
     const ciphertextWithTag = packedCiphertext.slice(NONCE_LENGTH);
     
-    const cipher = gcm(key, nonce);
+    let cipher: any = gcm(key, nonce);
+    
+    if (associatedData) {
+        if (typeof cipher.withAAD !== 'function') throw new Error("withAAD not supported by this @noble/ciphers version");
+        cipher = cipher.withAAD(associatedData);
+    }
     
     // Si el texto ha sido alterado, esto lanzará un error (throw)
-    return cipher.decrypt(ciphertextWithTag, associatedData);
+    return cipher.decrypt(ciphertextWithTag);
 }
 
 // ============================================================================
@@ -124,11 +138,17 @@ export function decryptSymmetric(packedCiphertext: Uint8Array, key: Uint8Array, 
 // ============================================================================
 
 export function bytesToBase64(bytes: Uint8Array): string {
+    if (!(bytes instanceof Uint8Array)) {
+        throw new Error(`bytesToBase64 expected Uint8Array, got ${typeof bytes}`);
+    }
     const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join("");
     return btoa(binString);
 }
 
 export function base64ToBytes(base64: string): Uint8Array {
+    if (typeof base64 !== 'string') {
+        throw new Error(`base64ToBytes expected string, got ${typeof base64}`);
+    }
     const binString = atob(base64);
     return new Uint8Array(Array.from(binString, (m) => m.charCodeAt(0)));
 }
