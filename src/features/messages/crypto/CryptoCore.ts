@@ -95,12 +95,8 @@ export function encryptSymmetric(plaintext: Uint8Array, key: Uint8Array, associa
     if (associatedData && !(associatedData instanceof Uint8Array)) throw new Error("associatedData must be Uint8Array");
     
     const nonce = randomBytes(NONCE_LENGTH);
-    let cipher: any = gcm(key, nonce);
-    
-    if (associatedData) {
-        if (typeof cipher.withAAD !== 'function') throw new Error("withAAD not supported by this @noble/ciphers version");
-        cipher = cipher.withAAD(associatedData);
-    }
+    // In @noble/ciphers AES-GCM, the 3rd argument to gcm() is the AAD.
+    const cipher: any = associatedData ? gcm(key, nonce, associatedData) : gcm(key, nonce);
     
     // En @noble/ciphers, cipher.encrypt retorna el ciphertext CON el tag de autenticación adjunto al final
     const ciphertextWithTag = cipher.encrypt(plaintext);
@@ -122,12 +118,8 @@ export function decryptSymmetric(packedCiphertext: Uint8Array, key: Uint8Array, 
     const nonce = packedCiphertext.slice(0, NONCE_LENGTH);
     const ciphertextWithTag = packedCiphertext.slice(NONCE_LENGTH);
     
-    let cipher: any = gcm(key, nonce);
-    
-    if (associatedData) {
-        if (typeof cipher.withAAD !== 'function') throw new Error("withAAD not supported by this @noble/ciphers version");
-        cipher = cipher.withAAD(associatedData);
-    }
+    // In @noble/ciphers AES-GCM, the 3rd argument to gcm() is the AAD.
+    const cipher: any = associatedData ? gcm(key, nonce, associatedData) : gcm(key, nonce);
     
     // Si el texto ha sido alterado, esto lanzará un error (throw)
     return cipher.decrypt(ciphertextWithTag);
