@@ -197,3 +197,18 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card);
 }
+
+/* Ocultar cualquier botón o badge de Lovable / Edit with Lovable */
+#lovable-badge,
+[data-lovable-badge],
+.lovable-badge,
+a[href*="lovable.dev"],
+button[data-lovable],
+div[class*="lovable-badge"],
+div[id*="lovable"] {
+  display: none !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+

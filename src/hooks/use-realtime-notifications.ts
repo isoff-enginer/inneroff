@@ -26,26 +26,34 @@ export function useRealtimeNotifications() {
     queryFn: async () => {
       if (!user?.id) return [];
 
-      const { data, error } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(50);
+      try {
+        const { data, error } = await supabase
+          .from("notifications")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(50);
 
-      if (error) throw error;
+        if (error) {
+          console.warn("[Notifications] Error fetching notifications:", error.message);
+          return [];
+        }
 
-      return (data || []).map((n) => ({
-        id: n.id,
-        userId: n.user_id,
-        title: n.title,
-        body: n.body,
-        type: n.type,
-        isRead: n.is_read,
-        referenceId: n.reference_id,
-        referenceType: n.reference_type,
-        createdAt: n.created_at,
-      })) as AppNotification[];
+        return (data || []).map((n) => ({
+          id: n.id,
+          userId: n.user_id,
+          title: n.title,
+          body: n.body,
+          type: n.type,
+          isRead: n.is_read,
+          referenceId: n.reference_id,
+          referenceType: n.reference_type,
+          createdAt: n.created_at,
+        })) as AppNotification[];
+      } catch (err) {
+        console.warn("[Notifications] Catch error:", err);
+        return [];
+      }
     },
     enabled: !!user?.id,
   });
@@ -54,58 +62,62 @@ export function useRealtimeNotifications() {
   useEffect(() => {
     if (!user?.id) return;
 
-    const channel = supabase
-      .channel(`user-notifications-${user.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          const newNotif = payload.new as any;
-          
-          // Show toast in app
-          toast.info(newNotif.title, {
-            description: newNotif.body,
-            duration: 5000,
-          });
+    try {
+      const channel = supabase
+        .channel(`user-notifications-${user.id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newNotif = payload.new as any;
+            
+            // Show toast in app
+            toast.info(newNotif.title, {
+              description: newNotif.body,
+              duration: 5000,
+            });
 
-          // Show browser notification if permitted
-          showLocalNotification(newNotif.title, {
-            body: newNotif.body || "",
-            url: newNotif.reference_type === "dispatch"
-              ? "/dispatches"
-              : newNotif.reference_type === "inventory"
-              ? "/inventory"
-              : "/notifications",
-          });
+            // Show browser notification if permitted
+            showLocalNotification(newNotif.title, {
+              body: newNotif.body || "",
+              url: newNotif.reference_type === "dispatch"
+                ? "/dispatches"
+                : newNotif.reference_type === "inventory"
+                ? "/inventory"
+                : "/notifications",
+            });
 
-          // Invalidate operational queries
-          queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
-          queryClient.invalidateQueries({ queryKey: ["live_dispatches"] });
-          queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "notifications",
-          filter: `user_id=eq.${user.id}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
-        }
-      )
-      .subscribe();
+            // Invalidate operational queries
+            queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+            queryClient.invalidateQueries({ queryKey: ["live_dispatches"] });
+            queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            queryClient.invalidateQueries({ queryKey: ["notifications", user.id] });
+          }
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    } catch (e) {
+      console.warn("[Notifications] Channel error:", e);
+    }
   }, [user?.id, queryClient]);
 
   const markAllAsRead = async () => {

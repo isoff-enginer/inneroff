@@ -75,7 +75,7 @@ export const MOBILE_NAV: NavItem[] = [
   { to: "/inventory", label: "Inventario", icon: Package },
   { to: "/dispatches", label: "Despachos", icon: Send },
   { to: "/sales", label: "Ventas", icon: Wallet },
-  { to: "/notifications", label: "Alertas", icon: Bell },
+  { to: "/notifications", label: "Notificaciones", icon: Bell },
 ];
 
 export function isVisibleForRole(item: NavItem, role: AppRole): boolean {

@@ -7,8 +7,6 @@ import { checkClientRateLimit, sanitizeInput } from "@/lib/security";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/login")({
   head: () => ({
@@ -16,7 +14,7 @@ export const Route = createFileRoute("/login")({
       { title: "Iniciar sesión · Reserva Operaciones" },
       {
         name: "description",
-        content: "Acceso restringido al panel interno de operación de fábrica, bodegas y tiendas.",
+        content: "Acceso seguro al sistema de operaciones, inventario y despachos.",
       },
     ],
   }),
@@ -34,14 +32,17 @@ function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.navigate({ to: "/" });
+      router.navigate({ to: "/dashboard" });
     }
   }, [isAuthenticated, router]);
 
   if (sessionLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-muted/40">
-        <Loader2 className="size-8 animate-spin text-primary" />
+      <main className="flex min-h-screen items-center justify-center bg-[#FAF8F5]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="size-8 animate-spin rounded-full border-3 border-black border-t-transparent" />
+          <span className="text-xs font-bold text-gray-500">Cargando sesión...</span>
+        </div>
       </main>
     );
   }
@@ -54,10 +55,10 @@ function LoginPage() {
       return;
     }
 
-    // Anti brute-force rate limit
+    // Anti brute-force client rate limit (5 attempts per 30s)
     const rateCheck = checkClientRateLimit(`auth_attempt_${cleanEmail}`, 5, 30000);
     if (!rateCheck.allowed) {
-      toast.error("Demasiados intentos fallidos. Por seguridad, espera 30 segundos.");
+      toast.error("Demasiados intentos. Por seguridad espera 30 segundos.");
       return;
     }
 
@@ -72,8 +73,10 @@ function LoginPage() {
         if (error.message.includes("Invalid login credentials")) {
           toast.error("Credenciales incorrectas.");
         } else {
-          toast.error("Ocurrió un error al iniciar sesión.");
+          toast.error(error.message || "Ocurrió un error al iniciar sesión.");
         }
+      } else {
+        toast.success("Bienvenido al sistema");
       }
     } catch (err) {
       toast.error("Error de conexión. Intenta nuevamente.");
@@ -83,39 +86,50 @@ function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/40 px-4 py-12">
-      <div className="surface w-full max-w-sm p-7">
-        <div className="flex size-11 items-center justify-center rounded-lg bg-primary">
-          <ShieldCheck className="size-5 text-primary-foreground" aria-hidden="true" />
+    <main className="flex min-h-screen items-center justify-center bg-[#FAF8F5] px-5 py-12 selection:bg-amber-200">
+      <div className="w-full max-w-sm rounded-[32px] bg-white p-8 shadow-sm border border-gray-100">
+        
+        {/* Hourglass Icon Logo */}
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-black text-white shadow-xs mb-6">
+          <span className="text-2xl">⏳</span>
         </div>
-        <h1 className="mt-5 text-xl font-semibold tracking-tight">Acceso al sistema</h1>
-        <p className="mt-1.5 text-sm text-muted-foreground">
-          Ingresa tus credenciales para continuar.
+
+        <h1 className="text-2xl font-black tracking-tight text-gray-900">
+          Iniciar Sesión
+        </h1>
+        <p className="mt-1 text-xs font-medium text-gray-500">
+          Ingresa tus credenciales oficiales de Supabase para continuar.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleLogin}>
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo corporativo</Label>
-            <Input
+          <div>
+            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5" htmlFor="email">
+              Correo Corporativo
+            </label>
+            <input
               id="email"
               type="email"
               autoComplete="email"
-              placeholder="nombre@empresa.com"
+              placeholder="tu@empresa.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               disabled={isSubmitting}
               required
+              className="w-full bg-[#FAF8F5] border border-gray-200 rounded-2xl p-3.5 text-sm font-medium outline-none focus:border-black transition-colors"
             />
           </div>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="password">Contraseña</Label>
-              <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider" htmlFor="password">
+                Contraseña
+              </label>
+              <Link to="/forgot-password" className="text-xs font-bold text-gray-400 hover:text-black transition-colors">
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
             <div className="relative">
-              <Input
+              <input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
@@ -123,10 +137,11 @@ function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isSubmitting}
                 required
+                className="w-full bg-[#FAF8F5] border border-gray-200 rounded-2xl p-3.5 pr-11 text-sm font-medium outline-none focus:border-black transition-colors"
               />
               <button
                 type="button"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
               >
@@ -134,17 +149,29 @@ function LoginPage() {
               </button>
             </div>
           </div>
-          <Button type="submit" className="w-full" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
-                Iniciando sesión...
-              </>
-            ) : (
-              "Ingresar"
-            )}
-          </Button>
+
+          <div className="pt-2">
+            <Button 
+              type="submit" 
+              className="w-full h-13 rounded-full bg-black hover:bg-gray-900 text-white font-black text-sm tracking-wide shadow-md active:scale-95 transition-transform" 
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  Iniciando...
+                </span>
+              ) : (
+                "Ingresar al Sistema →"
+              )}
+            </Button>
+          </div>
         </form>
+
+        <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-center gap-1.5 text-[11px] font-bold text-gray-400">
+          <ShieldCheck className="size-4 text-emerald-600" />
+          <span>Conexión cifrada & autenticada</span>
+        </div>
       </div>
     </main>
   );

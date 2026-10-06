@@ -5,14 +5,14 @@ import { Loader2 } from "lucide-react";
 import { AppShell } from "@/components/layout/app-shell";
 import { useSession } from "@/features/auth/session";
 import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications";
-import { registerServiceWorker } from "@/lib/push-notifications";
+import { registerServiceWorker, requestAndSubscribePush } from "@/lib/push-notifications";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
 function AppLayout() {
-  const { isAuthenticated, isLoading } = useSession();
+  const { user, isAuthenticated, isLoading } = useSession();
   const { unreadCount } = useRealtimeNotifications();
   const router = useRouter();
 
@@ -22,11 +22,17 @@ function AppLayout() {
     }
   }, [isLoading, isAuthenticated, router]);
 
+  // Request browser notification permission once upon entering
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user?.id) {
       registerServiceWorker();
+
+      // Only prompt if not decided yet
+      if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+        requestAndSubscribePush(user.id);
+      }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.id]);
 
   if (isLoading) {
     return (
