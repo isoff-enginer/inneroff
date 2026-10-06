@@ -9,8 +9,6 @@ import {
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
 import { SessionProvider } from "@/features/auth/session";
-import { DeviceCryptoProvider } from "@/features/messages/crypto/DeviceCryptoContext";
-import { DeviceProtectionOverlay } from "@/features/devices/components/DeviceProtectionOverlay";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -131,11 +129,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
-        <DeviceCryptoProvider>
-          <DeviceProtectionOverlay>
-            <Outlet />
-          </DeviceProtectionOverlay>
-        </DeviceCryptoProvider>
+        <Outlet />
         <Toaster position="top-center" richColors />
       </SessionProvider>
     </QueryClientProvider>

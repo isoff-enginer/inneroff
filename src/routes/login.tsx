@@ -3,6 +3,7 @@ import { ShieldCheck, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/features/auth/session";
+import { checkClientRateLimit, sanitizeInput } from "@/lib/security";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -47,15 +48,23 @@ function LoginPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
+    const cleanEmail = sanitizeInput(email);
+    if (!cleanEmail || !password) {
       toast.error("Por favor, ingresa correo y contraseña.");
+      return;
+    }
+
+    // Anti brute-force rate limit
+    const rateCheck = checkClientRateLimit(`auth_attempt_${cleanEmail}`, 5, 30000);
+    if (!rateCheck.allowed) {
+      toast.error("Demasiados intentos fallidos. Por seguridad, espera 30 segundos.");
       return;
     }
 
     setIsSubmitting(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: cleanEmail,
         password,
       });
 
@@ -66,7 +75,6 @@ function LoginPage() {
           toast.error("Ocurrió un error al iniciar sesión.");
         }
       }
-      // If success, the onAuthStateChange in SessionProvider will trigger and set isAuthenticated, which triggers the useEffect to redirect.
     } catch (err) {
       toast.error("Error de conexión. Intenta nuevamente.");
     } finally {

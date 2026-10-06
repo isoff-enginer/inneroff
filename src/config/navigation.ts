@@ -4,7 +4,6 @@ import {
   Send,
   Wallet,
   Bell,
-  MessageCircle,
   Settings,
   Factory,
   Archive,
@@ -53,7 +52,6 @@ export const NAV_SECTIONS: NavSection[] = [
     title: "Comunicación",
     items: [
       { to: "/notifications", label: "Notificaciones", icon: Bell },
-      { to: "/messages", label: "Mensajes", icon: MessageCircle },
     ],
   },
   {
@@ -71,13 +69,13 @@ export const NAV_SECTIONS: NavSection[] = [
   },
 ];
 
-/** Navegación inferior en móvil: solo los accesos primarios. */
+/** Navegación inferior en móvil: accesos primarios sin chat. */
 export const MOBILE_NAV: NavItem[] = [
   { to: "/dashboard", label: "Inicio", icon: Home },
   { to: "/inventory", label: "Inventario", icon: Package },
   { to: "/dispatches", label: "Despachos", icon: Send },
   { to: "/sales", label: "Ventas", icon: Wallet },
-  { to: "/messages", label: "Mensajes", icon: MessageCircle },
+  { to: "/notifications", label: "Alertas", icon: Bell },
 ];
 
 export function isVisibleForRole(item: NavItem, role: AppRole): boolean {

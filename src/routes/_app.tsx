@@ -4,7 +4,8 @@ import { Loader2 } from "lucide-react";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { useSession } from "@/features/auth/session";
-import { MOCK_NOTIFICATIONS } from "@/features/dashboard/mock-data";
+import { useRealtimeNotifications } from "@/hooks/use-realtime-notifications";
+import { registerServiceWorker } from "@/lib/push-notifications";
 
 export const Route = createFileRoute("/_app")({
   component: AppLayout,
@@ -12,6 +13,7 @@ export const Route = createFileRoute("/_app")({
 
 function AppLayout() {
   const { isAuthenticated, isLoading } = useSession();
+  const { unreadCount } = useRealtimeNotifications();
   const router = useRouter();
 
   useEffect(() => {
@@ -19,6 +21,12 @@ function AppLayout() {
       router.navigate({ to: "/login" });
     }
   }, [isLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      registerServiceWorker();
+    }
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -32,10 +40,8 @@ function AppLayout() {
     return null; // Will redirect via useEffect
   }
 
-  const unread = MOCK_NOTIFICATIONS.filter((n) => !n.read).length;
-
   return (
-    <AppShell unreadCount={unread}>
+    <AppShell unreadCount={unreadCount}>
       <Outlet />
     </AppShell>
   );

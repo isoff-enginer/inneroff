@@ -7,11 +7,16 @@ export interface InventoryProduct {
   productId: string;
   name: string;
   category: string;
+  categoryId?: string;
   quantity: number;
   status: "disponible" | "poco_stock" | "agotado";
   locationType: string;
   locationId: string;
   unitValue: number;
+  costValue?: number;
+  sku?: string | null;
+  unitName?: string | null;
+  description?: string | null;
 }
 
 export interface InventoryMovement {
@@ -36,7 +41,7 @@ export function useInventoryData() {
   const queryClient = useQueryClient();
 
   const inventoryQuery = useQuery({
-    queryKey: ["inventory_balances", user?.id],
+    queryKey: ["inventory_balances", user?.id, role],
     queryFn: async () => {
       let query = supabase
         .from("inventory_balances")
@@ -50,8 +55,13 @@ export function useInventoryData() {
           products (
             id,
             name,
+            category_id,
             unit_value,
-            product_categories (name)
+            cost_value,
+            sku,
+            unit_name,
+            description,
+            product_categories (id, name)
           )
         `);
 
@@ -83,11 +93,16 @@ export function useInventoryData() {
           productId: row.products?.id || "",
           name: row.products?.name || "Desconocido",
           category: row.products?.product_categories?.name || "General",
+          categoryId: row.products?.category_id,
           quantity: qty,
           status,
           locationType: row.location_type,
           locationId: locId,
           unitValue: row.products?.unit_value || 0,
+          costValue: row.products?.cost_value || 0,
+          sku: row.products?.sku || null,
+          unitName: row.products?.unit_name || "unidades",
+          description: row.products?.description || null,
         };
       });
 
@@ -108,7 +123,8 @@ export function useInventoryData() {
 
       const { data: prods, error: prodsError } = await supabase
         .from("products")
-        .select("category_id");
+        .select("category_id")
+        .eq("is_active", true);
       if (prodsError) throw prodsError;
 
       const mapped = (cats || []).map(c => {
@@ -118,6 +134,32 @@ export function useInventoryData() {
 
       return mapped;
     }
+  });
+
+  const allProductsQuery = useQuery({
+    queryKey: ["all_products_catalog"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("products")
+        .select(`
+          id,
+          name,
+          category_id,
+          unit_value,
+          cost_value,
+          sku,
+          unit_name,
+          description,
+          is_active,
+          product_categories (id, name)
+        `)
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
   });
 
   const getMovementsQuery = (productId: string, locationType: string, locationId: string) => 
@@ -186,7 +228,7 @@ export function useInventoryData() {
       const movementPayload: any = {
         product_id: productId,
         category_id: categoryId,
-        movement_type: "transfer",
+        movement_type: "adjustment",
         quantity: quantity,
         unit_value: unitValue,
         notes: `Ajuste manual (${type === "in" ? "Entrada" : "Salida"})`,
@@ -207,10 +249,9 @@ export function useInventoryData() {
         movementPayload[type === "in" ? "to_location_type" : "from_location_type"] = "factory";
       }
 
-      const { error: moveError } = await supabase.from("inventory_movements").insert(movementPayload as any);
-      if (moveError) console.warn("Movement insert failed, maybe enum mismatch. Details:", moveError);
+      await supabase.from("inventory_movements").insert(movementPayload as any);
 
-      const newQuantity = type === "in" ? currentQuantity + quantity : currentQuantity - quantity;
+      const newQuantity = type === "in" ? currentQuantity + quantity : Math.max(0, currentQuantity - quantity);
       
       const { error: balError } = await supabase
         .from("inventory_balances")
@@ -252,7 +293,7 @@ export function useInventoryData() {
       sku?: string;
       description?: string;
     }) => {
-      const { error } = await supabase.from("products").insert({
+      const { data: newProd, error } = await supabase.from("products").insert({
         name: data.name,
         category_id: data.category_id,
         unit_value: data.unit_value,
@@ -261,17 +302,75 @@ export function useInventoryData() {
         sku: data.sku || null,
         description: data.description || null,
         is_active: true,
-      });
+      }).select("id").single();
+
+      if (error) throw error;
+
+      // Also create an initial zero balance for the user's location if applicable
+      if (user?.factoryId) {
+        await supabase.from("inventory_balances").insert({
+          product_id: newProd.id,
+          location_type: "factory",
+          factory_id: user.factoryId,
+          quantity: 0,
+        });
+      } else if (user?.warehouseId) {
+        await supabase.from("inventory_balances").insert({
+          product_id: newProd.id,
+          location_type: "warehouse",
+          warehouse_id: user.warehouseId,
+          quantity: 0,
+        });
+      }
+
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
+      queryClient.invalidateQueries({ queryKey: ["all_products_catalog"] });
+      queryClient.invalidateQueries({ queryKey: ["product_categories"] });
+    }
+  });
+
+  const updateProductMutation = useMutation({
+    mutationFn: async (data: {
+      id: string;
+      name?: string;
+      category_id?: string;
+      unit_value?: number;
+      cost_value?: number;
+      unit_name?: string;
+      sku?: string;
+      description?: string;
+    }) => {
+      const updatePayload: any = {};
+      if (data.name !== undefined) updatePayload.name = data.name;
+      if (data.category_id !== undefined) updatePayload.category_id = data.category_id;
+      if (data.unit_value !== undefined) updatePayload.unit_value = data.unit_value;
+      if (data.cost_value !== undefined) updatePayload.cost_value = data.cost_value;
+      if (data.unit_name !== undefined) updatePayload.unit_name = data.unit_name;
+      if (data.sku !== undefined) updatePayload.sku = data.sku;
+      if (data.description !== undefined) updatePayload.description = data.description;
+      updatePayload.updated_at = new Date().toISOString();
+
+      const { error } = await supabase
+        .from("products")
+        .update(updatePayload)
+        .eq("id", data.id);
+
       if (error) throw error;
       return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
+      queryClient.invalidateQueries({ queryKey: ["all_products_catalog"] });
+      queryClient.invalidateQueries({ queryKey: ["product_categories"] });
     }
   });
 
   return {
     inventory: inventoryQuery.data || [],
+    allProducts: allProductsQuery.data || [],
     categories: categoriesQuery.data || [],
     isLoading: inventoryQuery.isLoading || categoriesQuery.isLoading,
     error: inventoryQuery.error || categoriesQuery.error,
@@ -282,5 +381,7 @@ export function useInventoryData() {
     isCreatingCategory: createCategoryMutation.isPending,
     createProduct: createProductMutation.mutateAsync,
     isCreatingProduct: createProductMutation.isPending,
+    updateProduct: updateProductMutation.mutateAsync,
+    isUpdatingProduct: updateProductMutation.isPending,
   };
 }
