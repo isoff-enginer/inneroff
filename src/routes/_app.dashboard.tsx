@@ -4,7 +4,7 @@ import { useSession } from "@/features/auth/session";
 import { InventoryDashboardView } from "@/features/dashboard/components/InventoryDashboardView";
 import { WarehouseDispatchCollectorView } from "@/features/dashboard/components/WarehouseDispatchCollectorView";
 import { FactoryDispatchView } from "@/features/dashboard/components/FactoryDispatchView";
-import { Building2, Factory, Store, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 
 function DynamicDashboardRouter() {
   const { user, role, isLoading } = useSession();
@@ -12,10 +12,10 @@ function DynamicDashboardRouter() {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#FAF8F5]">
+      <div className="flex min-h-screen items-center justify-center bg-[#231934]">
         <div className="flex flex-col items-center gap-3">
-          <div className="size-8 animate-spin rounded-full border-3 border-black border-t-transparent" />
-          <span className="text-xs font-bold text-gray-500">Cargando panel...</span>
+          <div className="size-8 animate-spin rounded-full border-3 border-[#246bfd] border-t-transparent" />
+          <span className="text-xs font-bold text-[#a497be]">Cargando panel...</span>
         </div>
       </div>
     );
@@ -29,20 +29,20 @@ function DynamicDashboardRouter() {
   const activeView = activeRoleViewOverride || (isWarehouse ? "warehouse" : isFactory ? "factory" : "boss");
 
   return (
-    <div className="relative">
-      {/* Top Dev/Admin Quick Role Switcher (Available for Boss to preview/simulate other roles) */}
+    <div className="relative bg-[#231934] min-h-screen">
+      {/* Top Dev/Admin Role Switcher */}
       {isBoss && (
-        <aside aria-label="Simulador de roles" className="bg-black/90 text-white px-4 py-2 flex items-center justify-between text-xs sticky top-0 z-50 backdrop-blur-md">
-          <div className="flex items-center gap-2 font-bold">
-            <ShieldCheck className="size-4 text-amber-400" />
-            <span className="hidden sm:inline">Vista de Rol:</span>
+        <aside aria-label="Simulador de roles" className="bg-[#1e152d] text-white px-4 py-2 flex items-center justify-between text-xs sticky top-0 z-50 border-b border-white/10 backdrop-blur-md">
+          <div className="flex items-center gap-2 font-bold text-[#a497be]">
+            <ShieldCheck className="size-4 text-[#246bfd]" />
+            <span className="hidden sm:inline">Modo de Rol:</span>
           </div>
 
-          <div className="flex items-center gap-1.5 bg-white/10 p-1 rounded-full text-[11px] font-bold">
+          <div className="flex items-center gap-1.5 bg-[#2d2244] p-1 rounded-full text-[11px] font-bold border border-white/10">
             <button
               onClick={() => setActiveRoleViewOverride("boss")}
               className={`px-3 py-1 rounded-full transition-all ${
-                activeView === "boss" ? "bg-amber-400 text-black shadow-xs font-black" : "text-gray-300 hover:text-white"
+                activeView === "boss" ? "bg-[#246bfd] text-white shadow-md shadow-[#246bfd]/30 font-black" : "text-[#a497be] hover:text-white"
               }`}
             >
               👑 Jefe
@@ -50,7 +50,7 @@ function DynamicDashboardRouter() {
             <button
               onClick={() => setActiveRoleViewOverride("warehouse")}
               className={`px-3 py-1 rounded-full transition-all ${
-                activeView === "warehouse" ? "bg-amber-400 text-black shadow-xs font-black" : "text-gray-300 hover:text-white"
+                activeView === "warehouse" ? "bg-[#246bfd] text-white shadow-md shadow-[#246bfd]/30 font-black" : "text-[#a497be] hover:text-white"
               }`}
             >
               📦 Bodega
@@ -58,7 +58,7 @@ function DynamicDashboardRouter() {
             <button
               onClick={() => setActiveRoleViewOverride("factory")}
               className={`px-3 py-1 rounded-full transition-all ${
-                activeView === "factory" ? "bg-amber-400 text-black shadow-xs font-black" : "text-gray-300 hover:text-white"
+                activeView === "factory" ? "bg-[#246bfd] text-white shadow-md shadow-[#246bfd]/30 font-black" : "text-[#a497be] hover:text-white"
               }`}
             >
               🏭 Fábrica

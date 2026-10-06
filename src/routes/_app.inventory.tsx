@@ -1,15 +1,12 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useMemo } from "react";
 import { 
   Search, 
   Plus, 
   X, 
   SlidersHorizontal, 
-  Send, 
   ArrowRight, 
-  Package, 
-  Check, 
-  Edit3 
+  Package
 } from "lucide-react";
 import { CATALOG_PRODUCTS, type CatalogProduct } from "@/features/inventory/product-catalog";
 import { ProductCard } from "@/features/inventory/components/ProductCard";
@@ -17,7 +14,6 @@ import { useInventoryData } from "@/features/inventory/use-inventory-data";
 import { useSession } from "@/features/auth/session";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
-import { formatCurrency } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_app/inventory")({
@@ -42,7 +38,7 @@ function InventoryPage() {
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<CategoryFilter>("Todos");
   
-  // Selection state for Mockup 1 (Multi-select items to quote or dispatch)
+  // Selection state for multi-select quote / dispatch
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [selectedPresentations, setSelectedPresentations] = useState<Record<string, string>>({});
 
@@ -143,22 +139,22 @@ function InventoryPage() {
   const selectedCount = selectedProductIds.size;
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-gray-900 pb-28 selection:bg-amber-200">
+    <div className="min-h-screen bg-[#231934] text-white pb-28 selection:bg-[#246bfd]/30">
       <div className="mx-auto max-w-md px-5 pt-4 space-y-4">
         
         {/* TOP BAR / TITLE */}
         <header className="flex items-center justify-between pt-1">
           <div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight">
-              Items
+            <h1 className="text-3xl font-black text-white tracking-tight">
+              Catálogo
             </h1>
-            <span className="text-xs text-gray-500 font-medium">
-              Catálogo oficial de productos & derivados
+            <span className="text-xs text-[#a497be] font-medium">
+              Productos Verde y Blanco con precios derivados
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-400 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-2xs">
+            <span className="text-xs font-bold text-[#d3cbe2] bg-[#2d2244] px-3 py-1.5 rounded-full border border-white/10 shadow-sm">
               {filteredProducts.length} productos
             </span>
           </div>
@@ -167,18 +163,18 @@ function InventoryPage() {
         {/* SEARCH BAR & FILTER BUTTON */}
         <div className="flex items-center gap-2.5">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-[#a497be]" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar productos, unidades..."
-              className="w-full bg-white pl-10 pr-9 py-2.5 rounded-2xl border border-gray-200 text-sm font-medium outline-none focus:border-black transition-colors shadow-2xs placeholder:text-gray-400"
+              className="w-full bg-[#2d2244] pl-10 pr-9 py-2.5 rounded-2xl border border-white/10 text-sm text-white font-medium outline-none focus:border-[#246bfd] transition-colors shadow-sm placeholder:text-[#a497be]"
             />
             {search && (
               <button 
                 onClick={() => setSearch("")} 
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#a497be] hover:text-white"
               >
                 <X className="size-4" />
               </button>
@@ -187,13 +183,13 @@ function InventoryPage() {
 
           <button
             type="button"
-            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-white border border-gray-200 shadow-2xs text-gray-700 hover:border-gray-300 transition-colors"
+            className="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-[#2d2244] border border-white/10 shadow-sm text-[#d3cbe2] hover:border-white/20 transition-colors"
           >
             <SlidersHorizontal className="size-4" />
           </button>
         </div>
 
-        {/* CATEGORY SELECTOR PILLS (Mockup 1) */}
+        {/* CATEGORY SELECTOR PILLS */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {(["Todos", "Verde", "Blanco"] as CategoryFilter[]).map((cat) => (
             <button
@@ -201,8 +197,8 @@ function InventoryPage() {
               onClick={() => setSelectedCategory(cat)}
               className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all ${
                 selectedCategory === cat
-                  ? "bg-black text-white shadow-xs"
-                  : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"
+                  ? "bg-[#246bfd] text-white shadow-md shadow-[#246bfd]/30"
+                  : "bg-[#2d2244] text-[#a497be] border border-white/10 hover:border-white/20"
               }`}
             >
               {cat}
@@ -210,10 +206,10 @@ function InventoryPage() {
           ))}
         </div>
 
-        {/* 2-COLUMN PRODUCT GRID (Mockup 1 Exact Style) */}
+        {/* 2-COLUMN PRODUCT GRID */}
         {filteredProducts.length === 0 ? (
-          <div className="py-20 text-center text-gray-400 flex flex-col items-center">
-            <Package className="size-12 mb-2 opacity-30" />
+          <div className="py-20 text-center text-[#a497be] flex flex-col items-center">
+            <Package className="size-12 mb-2 opacity-30 text-[#246bfd]" />
             <p className="text-sm font-medium">No se encontraron productos con esos filtros.</p>
           </div>
         ) : (
@@ -232,24 +228,24 @@ function InventoryPage() {
         )}
       </div>
 
-      {/* STICKY BOTTOM FLOATING ACTION BAR (Mockup 1) */}
+      {/* STICKY BOTTOM FLOATING ACTION BAR */}
       <aside aria-label="Acciones de catálogo" className="fixed bottom-16 inset-x-0 mx-auto max-w-md px-5 z-40">
         <div className="flex items-center gap-3">
-          {/* Yellow Round '+' Button */}
+          {/* Add '+' Button */}
           {isBoss && (
             <button
               onClick={handleOpenCreateProduct}
-              className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#FEF08A] hover:bg-amber-300 border border-amber-300 shadow-lg text-black active:scale-95 transition-transform"
+              className="flex size-14 shrink-0 items-center justify-center rounded-full bg-[#f79193] hover:bg-[#e67e80] shadow-lg shadow-[#f79193]/30 text-[#231934] active:scale-95 transition-transform font-bold"
               title="Añadir nuevo producto"
             >
               <Plus className="size-6 stroke-[2.5]" />
             </button>
           )}
 
-          {/* Wide Black Pill Button */}
+          {/* Wide Action Pill Button */}
           <button
             onClick={handleProceedToDispatch}
-            className="flex-1 h-14 bg-black hover:bg-gray-900 text-white font-black rounded-full px-6 flex items-center justify-between shadow-xl active:scale-[0.98] transition-transform"
+            className="flex-1 h-14 bg-[#246bfd] hover:bg-[#1a4ec8] text-white font-black rounded-full px-6 flex items-center justify-between shadow-xl shadow-[#246bfd]/40 active:scale-[0.98] transition-transform"
           >
             <span className="text-sm tracking-wide">
               {selectedCount > 0 ? `Despachar (${selectedCount})` : "Crear despacho"}
@@ -261,34 +257,34 @@ function InventoryPage() {
 
       {/* DRAWER: NUEVO / EDITAR PRODUCTO */}
       <Drawer open={isAddEditDrawerOpen} onOpenChange={setIsAddEditDrawerOpen}>
-        <DrawerContent className="bg-white border-t-0 px-5 pb-8">
+        <DrawerContent className="bg-[#231934] border-t border-white/10 px-5 pb-8 text-white">
           <div className="flex flex-col max-h-[85vh]">
-            <div className="py-4 border-b border-gray-100 flex items-center justify-between">
-              <h2 className="text-xl font-black text-gray-900">
+            <div className="py-4 border-b border-white/10 flex items-center justify-between">
+              <h2 className="text-xl font-black text-white">
                 {editingProduct ? "Editar Producto" : "Nuevo Producto en Catálogo"}
               </h2>
             </div>
 
             <div className="flex-1 overflow-y-auto py-4 space-y-4 scrollbar-hide">
               <div>
-                <label className="text-[11px] font-bold text-gray-400 uppercase block mb-1">Nombre del producto *</label>
+                <label className="text-[11px] font-bold text-[#a497be] uppercase block mb-1">Nombre del producto *</label>
                 <input
                   type="text"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="Ej. Gordos, Mamitas, Tornillos..."
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:border-black"
+                  className="w-full p-3.5 bg-[#2d2244] border border-white/10 rounded-2xl text-sm font-bold text-white outline-none focus:border-[#246bfd]"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-gray-400 uppercase block mb-1">Categoría</label>
+                <label className="text-[11px] font-bold text-[#a497be] uppercase block mb-1">Categoría</label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setFormCategory("Verde")}
-                    className={`p-3 rounded-xl font-bold text-xs border transition-all ${
-                      formCategory === "Verde" ? "bg-black text-white border-black" : "bg-gray-50 text-gray-700 border-gray-200"
+                    className={`p-3 rounded-2xl font-bold text-xs border transition-all ${
+                      formCategory === "Verde" ? "bg-[#8ec97b] text-[#14280f] border-[#8ec97b]" : "bg-[#2d2244] text-white border-white/10"
                     }`}
                   >
                     Verde
@@ -296,8 +292,8 @@ function InventoryPage() {
                   <button
                     type="button"
                     onClick={() => setFormCategory("Blanco")}
-                    className={`p-3 rounded-xl font-bold text-xs border transition-all ${
-                      formCategory === "Blanco" ? "bg-black text-white border-black" : "bg-gray-50 text-gray-700 border-gray-200"
+                    className={`p-3 rounded-2xl font-bold text-xs border transition-all ${
+                      formCategory === "Blanco" ? "bg-[#f79193] text-[#231934] border-[#f79193]" : "bg-[#2d2244] text-white border-white/10"
                     }`}
                   >
                     Blanco
@@ -306,35 +302,35 @@ function InventoryPage() {
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-gray-400 uppercase block mb-1">Precio Unitario Base ($ COP)</label>
+                <label className="text-[11px] font-bold text-[#a497be] uppercase block mb-1">Precio Unitario Base ($ COP)</label>
                 <input
                   type="number"
                   value={formPrice}
                   onChange={(e) => setFormPrice(e.target.value)}
                   placeholder="Ej. 3400"
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:border-black"
+                  className="w-full p-3.5 bg-[#2d2244] border border-white/10 rounded-2xl text-sm font-bold text-white outline-none focus:border-[#246bfd]"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-gray-400 uppercase block mb-1">Stock Inicial</label>
+                <label className="text-[11px] font-bold text-[#a497be] uppercase block mb-1">Stock Inicial</label>
                 <input
                   type="number"
                   value={formStock}
                   onChange={(e) => setFormStock(e.target.value)}
                   placeholder="Ej. 25"
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold outline-none focus:border-black"
+                  className="w-full p-3.5 bg-[#2d2244] border border-white/10 rounded-2xl text-sm font-bold text-white outline-none focus:border-[#246bfd]"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-gray-400 uppercase block mb-1">Descripción</label>
+                <label className="text-[11px] font-bold text-[#a497be] uppercase block mb-1">Descripción</label>
                 <textarea
                   rows={2}
                   value={formDesc}
                   onChange={(e) => setFormDesc(e.target.value)}
                   placeholder="Detalles sobre presentación y empaque"
-                  className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm outline-none resize-none"
+                  className="w-full p-3 bg-[#2d2244] border border-white/10 rounded-2xl text-sm text-white outline-none resize-none"
                 />
               </div>
             </div>
@@ -343,7 +339,7 @@ function InventoryPage() {
               <Button
                 onClick={handleSaveProduct}
                 disabled={isCreatingProduct || isUpdatingProduct}
-                className="w-full h-12 rounded-xl font-bold text-sm bg-black text-white"
+                className="w-full h-12 rounded-2xl font-black text-sm bg-[#246bfd] hover:bg-[#1a4ec8] text-white shadow-lg shadow-[#246bfd]/30"
               >
                 {isCreatingProduct ? "Guardando..." : "Guardar Producto"}
               </Button>

@@ -45,47 +45,47 @@ function ProfilePage() {
   const roleLabel = role ? ROLE_LABELS[role] : "Operador";
 
   return (
-    <div className="mx-auto max-w-md space-y-6 pb-24 pt-4">
+    <div className="mx-auto max-w-md space-y-6 pb-24 pt-4 px-5 text-white">
       {/* HEADER PROFILE */}
       <div>
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight">Mi Perfil</h1>
-        <p className="text-xs text-gray-500 font-medium">Información de la cuenta y rol asignado en el sistema.</p>
+        <h1 className="text-3xl font-black text-white tracking-tight">Mi Perfil</h1>
+        <p className="text-xs text-[#a497be] font-medium">Información de la cuenta y rol asignado en el sistema.</p>
       </div>
 
       {/* USER CARD */}
-      <section className="bg-white rounded-[28px] p-6 border border-gray-100 shadow-xs">
+      <section className="bg-[#2d2244] rounded-[28px] p-6 border border-white/10 shadow-lg">
         <div className="flex items-center gap-4">
-          <Avatar className="size-16 rounded-2xl border-2 border-white shadow-xs">
+          <Avatar className="size-16 rounded-2xl border border-white/15 shadow-sm">
             <AvatarImage src={user?.avatarUrl} />
-            <AvatarFallback className="rounded-2xl bg-amber-100 text-amber-900 font-bold text-lg">
+            <AvatarFallback className="rounded-2xl bg-gradient-to-br from-[#246bfd] to-[#1a4ec8] text-white font-bold text-lg">
               {displayName.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1">
-            <h2 className="text-lg font-black text-gray-900 leading-tight">{fullName}</h2>
+            <h2 className="text-lg font-black text-white leading-tight">{fullName}</h2>
             <div className="flex items-center gap-1.5 mt-1">
-              <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full">
+              <span className="text-xs font-bold text-[#246bfd] bg-[#246bfd]/15 px-2.5 py-0.5 rounded-full border border-[#246bfd]/30">
                 {roleLabel}
               </span>
-              <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <span className="text-xs font-bold text-[#8ec97b] bg-[#8ec97b]/15 px-2 py-0.5 rounded-full border border-[#8ec97b]/30 flex items-center gap-1">
                 <CheckCircle2 className="size-3" /> Activo
               </span>
             </div>
           </div>
         </div>
 
-        <div className="mt-6 divide-y divide-gray-100 border-t border-gray-100 pt-1">
+        <div className="mt-6 divide-y divide-white/10 border-t border-white/10 pt-1">
           <div className="flex items-center justify-between py-3 text-xs">
-            <span className="font-bold text-gray-400 uppercase">Nombre visible</span>
-            <span className="font-bold text-gray-900">{displayName}</span>
+            <span className="font-bold text-[#a497be] uppercase">Nombre visible</span>
+            <span className="font-bold text-white">{displayName}</span>
           </div>
           <div className="flex items-center justify-between py-3 text-xs">
-            <span className="font-bold text-gray-400 uppercase">Rol operativo</span>
-            <span className="font-bold text-gray-900">{roleLabel}</span>
+            <span className="font-bold text-[#a497be] uppercase">Rol operativo</span>
+            <span className="font-bold text-white">{roleLabel}</span>
           </div>
           <div className="flex items-center justify-between py-3 text-xs">
-            <span className="font-bold text-gray-400 uppercase">Seguridad</span>
-            <span className="font-bold text-emerald-600 flex items-center gap-1">
+            <span className="font-bold text-[#a497be] uppercase">Seguridad</span>
+            <span className="font-bold text-[#8ec97b] flex items-center gap-1">
               <Shield className="size-3.5" /> PBKDF2 + AES-GCM
             </span>
           </div>
@@ -93,15 +93,15 @@ function ProfilePage() {
       </section>
 
       {/* NOTIFICATIONS ACTION */}
-      <section className="bg-white rounded-[28px] p-5 border border-gray-100 shadow-xs space-y-3">
+      <section className="bg-[#2d2244] rounded-[28px] p-5 border border-white/10 shadow-lg space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="size-9 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800">
+            <div className="size-9 rounded-xl bg-[#246bfd]/20 text-[#246bfd] flex items-center justify-center border border-[#246bfd]/30">
               <Bell className="size-4" />
             </div>
             <div>
-              <h3 className="text-sm font-black text-gray-900">Notificaciones Push</h3>
-              <p className="text-[11px] text-gray-500">Recibe alertas en tiempo real sobre despachos y cobros</p>
+              <h3 className="text-sm font-black text-white">Notificaciones Push</h3>
+              <p className="text-[11px] text-[#a497be]">Recibe alertas en tiempo real sobre despachos y cobros</p>
             </div>
           </div>
         </div>
@@ -109,7 +109,7 @@ function ProfilePage() {
         <Button
           variant="outline"
           onClick={handleTestNotifications}
-          className="w-full rounded-xl text-xs font-bold border-gray-200"
+          className="w-full rounded-2xl text-xs font-bold border-white/10 bg-[#231934] text-white hover:bg-[#1e152d]"
         >
           Verificar / Activar Notificaciones
         </Button>
@@ -118,7 +118,7 @@ function ProfilePage() {
       {/* SIGN OUT */}
       <Button
         onClick={handleLogout}
-        className="w-full h-12 rounded-2xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 font-bold text-sm"
+        className="w-full h-12 rounded-2xl bg-[#f75555]/15 text-[#f75555] hover:bg-[#f75555]/25 border border-[#f75555]/30 font-bold text-sm"
       >
         <LogOut className="size-4 mr-2" />
         Cerrar Sesión

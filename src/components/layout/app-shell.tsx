@@ -16,7 +16,7 @@ export function AppShell({ children, unreadCount = 0 }: AppShellProps) {
   const isInventory = location.pathname === "/inventory";
 
   return (
-    <div className="flex min-h-screen bg-[#FAF8F5]">
+    <div className="flex min-h-screen bg-[#231934] text-white">
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         {!isDashboard && !isInventory && <AppHeader unreadCount={unreadCount} />}

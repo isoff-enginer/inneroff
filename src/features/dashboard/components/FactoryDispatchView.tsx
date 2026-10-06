@@ -114,7 +114,7 @@ export function FactoryDispatchView() {
           await supabase.from("notifications").insert({
             user_id: b.id,
             title: `Nuevo Surtido de Fábrica`,
-            body: `Fábrica despachó ${totalSurtidoUnits} unidades de surtido hacia Bodega (${formatCurrency(totalSurtidoValue)}).`,
+            body: `Fábrica despachó ${totalSurtidoUnits} unidades hacia Bodega (${formatCurrency(totalSurtidoValue)}).`,
             type: "dispatch",
           });
         }
@@ -129,30 +129,34 @@ export function FactoryDispatchView() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF8F5] text-gray-900 pb-28">
+    <div className="min-h-screen bg-[#231934] text-white pb-28 selection:bg-[#246bfd]/30">
       <div className="mx-auto max-w-md px-5 pt-4 space-y-5">
         
         {/* HEADER FABRICA */}
         <header className="flex items-center justify-between pt-2">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-purple-700 bg-purple-100 px-2.5 py-0.5 rounded-full">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-[#246bfd] bg-[#246bfd]/15 px-3 py-1 rounded-full border border-[#246bfd]/30">
               Fábrica Operaciones
             </span>
-            <h1 className="text-2xl font-black text-gray-900 mt-1">
+            <h1 className="text-2xl font-black text-white mt-1">
               Despachar Surtido
             </h1>
           </div>
 
-          <div className="flex size-10 items-center justify-center rounded-2xl bg-black text-white shadow-xs">
-            <Factory className="size-5" />
+          <div className="flex size-10 items-center justify-center rounded-2xl bg-[#2d2244] border border-white/10 text-white shadow-sm">
+            <Factory className="size-5 text-[#246bfd]" />
           </div>
         </header>
 
         {/* PRODUCT SELECTION CARD */}
-        <section className="bg-white rounded-[28px] p-5 border border-gray-100 shadow-xs space-y-4">
+        <section className="bg-[#2d2244] rounded-[28px] p-5 border border-white/10 shadow-lg space-y-4">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-black uppercase tracking-wider text-gray-400">1. Seleccionar Producto</span>
-            <span className="text-xs font-bold text-amber-700 bg-amber-100 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-black uppercase tracking-wider text-[#a497be]">1. Seleccionar Producto</span>
+            <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+              selectedProduct.category === "Verde"
+                ? "bg-[#8ec97b]/20 text-[#8ec97b] border-[#8ec97b]/30"
+                : "bg-[#f79193]/20 text-[#f79193] border-[#f79193]/30"
+            }`}>
               {selectedProduct.category}
             </span>
           </div>
@@ -169,8 +173,8 @@ export function FactoryDispatchView() {
                 }}
                 className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl shrink-0 text-xs font-bold transition-all border ${
                   selectedProduct.id === prod.id
-                    ? "bg-black text-white border-black shadow-xs"
-                    : "bg-[#F5F4F0] text-gray-700 border-gray-200/80 hover:bg-gray-200"
+                    ? "bg-[#246bfd] text-white border-[#246bfd] shadow-md shadow-[#246bfd]/30"
+                    : "bg-[#231934] text-[#a497be] border-white/10 hover:border-white/20"
                 }`}
               >
                 <div className="size-5 shrink-0">
@@ -182,22 +186,22 @@ export function FactoryDispatchView() {
           </div>
 
           {/* Active Product Card Preview */}
-          <div className="flex items-center gap-4 bg-[#F5F4F0] p-4 rounded-2xl border border-gray-200/60">
-            <div className="size-16 shrink-0 bg-white rounded-2xl p-2 flex items-center justify-center shadow-2xs">
+          <div className="flex items-center gap-4 bg-[#231934] p-4 rounded-2xl border border-white/10">
+            <div className="size-16 shrink-0 bg-[#2d2244] rounded-2xl p-2 flex items-center justify-center border border-white/10">
               <ProductVisualIcon imageType={selectedProduct.imageType} className="size-12" />
             </div>
             <div className="flex-1">
-              <span className="text-base font-black text-gray-900 block">{selectedProduct.name}</span>
-              <span className="text-xs text-gray-500 block">{selectedProduct.description}</span>
-              <span className="text-xs font-bold text-gray-700 mt-1 block">
-                Precio derivado: <strong className="text-gray-900">{formatCurrency(itemUnitPrice)}</strong>
+              <span className="text-base font-black text-white block">{selectedProduct.name}</span>
+              <span className="text-xs text-[#a497be] block">{selectedProduct.description}</span>
+              <span className="text-xs font-bold text-white mt-1 block">
+                Precio derivado: <strong className="text-[#8ec97b]">{formatCurrency(itemUnitPrice)}</strong>
               </span>
             </div>
           </div>
 
           {/* Presentation Picker */}
           <div>
-            <label className="text-[11px] font-bold text-gray-400 uppercase block mb-1.5">
+            <label className="text-[11px] font-bold text-[#a497be] uppercase block mb-1.5">
               Presentación / Derivado
             </label>
             <div className="grid grid-cols-3 gap-2">
@@ -206,14 +210,14 @@ export function FactoryDispatchView() {
                   key={pres.name}
                   type="button"
                   onClick={() => setSelectedPresentation(pres.name)}
-                  className={`p-2 rounded-xl text-center border font-bold text-xs transition-all ${
+                  className={`p-2.5 rounded-xl text-center border font-bold text-xs transition-all ${
                     selectedPresentation === pres.name
-                      ? "bg-black text-white border-black"
-                      : "bg-[#F5F4F0] text-gray-700 border-gray-200 hover:bg-gray-200"
+                      ? "bg-[#246bfd] text-white border-[#246bfd] shadow-md shadow-[#246bfd]/25"
+                      : "bg-[#231934] text-[#a497be] border-white/10 hover:border-white/20"
                   }`}
                 >
                   <span className="block text-[11px]">{pres.label}</span>
-                  <span className="text-[10px] opacity-75">${pres.price.toLocaleString()}</span>
+                  <span className="text-[10px] opacity-80">${pres.price.toLocaleString()}</span>
                 </button>
               ))}
             </div>
@@ -221,36 +225,40 @@ export function FactoryDispatchView() {
 
           {/* Quantity Selector */}
           <div>
-            <label className="text-[11px] font-bold text-gray-400 uppercase block mb-1.5">
+            <label className="text-[11px] font-bold text-[#a497be] uppercase block mb-1.5">
               Cantidad a surtir
             </label>
-            <div className="flex items-center justify-between bg-[#F5F4F0] p-3 rounded-2xl border border-gray-200/80">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between bg-[#231934] p-3 rounded-2xl border border-white/10">
+              <div className="flex items-center gap-1.5">
                 {[10, 25, 50, 100].map(q => (
                   <button
                     key={q}
                     type="button"
                     onClick={() => setCurrentQty(q)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-bold ${currentQty === q ? 'bg-black text-white' : 'bg-white text-gray-700 border border-gray-200'}`}
+                    className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-all ${
+                      currentQty === q 
+                        ? "bg-[#246bfd] text-white border-[#246bfd]" 
+                        : "bg-[#2d2244] text-[#a497be] border-white/10"
+                    }`}
                   >
                     +{q}
                   </button>
                 ))}
               </div>
 
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setCurrentQty(Math.max(1, currentQty - 1))}
-                  className="size-8 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold"
+                  className="size-8 rounded-xl bg-[#2d2244] border border-white/10 flex items-center justify-center font-bold text-white"
                 >
                   <Minus className="size-3.5" />
                 </button>
-                <span className="text-lg font-black tabular w-8 text-center">{currentQty}</span>
+                <span className="text-base font-black tabular w-8 text-center text-white">{currentQty}</span>
                 <button
                   type="button"
                   onClick={() => setCurrentQty(currentQty + 1)}
-                  className="size-8 rounded-full bg-white border border-gray-200 flex items-center justify-center font-bold"
+                  className="size-8 rounded-xl bg-[#246bfd] text-white flex items-center justify-center font-bold"
                 >
                   <Plus className="size-3.5" />
                 </button>
@@ -261,7 +269,7 @@ export function FactoryDispatchView() {
           <Button
             type="button"
             onClick={handleAddSurtidoItem}
-            className="w-full bg-[#FEF08A] hover:bg-amber-300 text-gray-900 font-black h-11 rounded-xl text-xs border border-amber-300"
+            className="w-full bg-[#246bfd] hover:bg-[#1a4ec8] text-white font-black h-12 rounded-2xl text-xs shadow-lg shadow-[#246bfd]/30"
           >
             <Plus className="size-4 mr-1" />
             Añadir {selectedProduct.name} ({activePres.label}) al Surtido
@@ -269,20 +277,20 @@ export function FactoryDispatchView() {
         </section>
 
         {/* SURTIDO BATCH LIST */}
-        <section className="bg-white rounded-[28px] p-5 border border-gray-100 shadow-xs space-y-4">
+        <section className="bg-[#2d2244] rounded-[28px] p-5 border border-white/10 shadow-lg space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base font-black text-gray-900">2. Lote de Surtido a Despachar</h2>
-              <span className="text-xs text-gray-500">Destino: Bodega Principal</span>
+              <h2 className="text-base font-black text-white">2. Lote de Surtido a Despachar</h2>
+              <span className="text-xs text-[#a497be]">Destino: Bodega Principal</span>
             </div>
-            <span className="text-xs font-bold bg-purple-100 text-purple-800 px-2.5 py-0.5 rounded-full">
+            <span className="text-xs font-bold bg-[#8ec97b]/15 text-[#8ec97b] px-2.5 py-0.5 rounded-full border border-[#8ec97b]/30">
               {surtidoList.length} items
             </span>
           </div>
 
           {surtidoList.length === 0 ? (
-            <div className="py-6 text-center text-gray-400">
-              <Layers className="size-10 mx-auto mb-2 opacity-30" />
+            <div className="py-6 text-center text-[#a497be]">
+              <Layers className="size-9 mx-auto mb-2 opacity-30 text-[#246bfd]" />
               <p className="text-xs font-medium">El lote de surtido está vacío. Selecciona productos arriba.</p>
             </div>
           ) : (
@@ -290,29 +298,29 @@ export function FactoryDispatchView() {
               {surtidoList.map((item, idx) => (
                 <div 
                   key={`${item.product.id}-${item.presentationName}-${idx}`}
-                  className="flex items-center justify-between p-3.5 bg-[#FAF8F5] rounded-2xl border border-gray-200/60"
+                  className="flex items-center justify-between p-3.5 bg-[#231934] rounded-2xl border border-white/10"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="size-10 rounded-xl bg-white p-1 border border-gray-100 flex items-center justify-center shrink-0">
+                    <div className="size-10 rounded-xl bg-[#2d2244] p-1 border border-white/10 flex items-center justify-center shrink-0">
                       <ProductVisualIcon imageType={item.product.imageType} className="size-7" />
                     </div>
                     <div>
-                      <span className="text-xs font-black text-gray-900 block leading-tight">
+                      <span className="text-xs font-black text-white block leading-tight">
                         {item.product.name} ({item.presentationLabel})
                       </span>
-                      <span className="text-[11px] text-gray-500">
+                      <span className="text-[11px] text-[#a497be]">
                         {item.quantity} uds × {formatCurrency(item.unitPrice)}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-black text-gray-900 tabular">
+                    <span className="text-xs font-black text-[#8ec97b] tabular">
                       {formatCurrency(item.quantity * item.unitPrice)}
                     </span>
                     <button
                       onClick={() => handleRemoveSurtidoItem(idx)}
-                      className="size-6 rounded-full bg-gray-200 text-gray-600 flex items-center justify-center font-bold text-xs hover:bg-rose-100 hover:text-rose-600"
+                      className="size-6 rounded-full bg-white/10 text-white flex items-center justify-center font-bold text-xs hover:bg-[#f75555]/30 hover:text-[#f75555]"
                     >
                       ✕
                     </button>
@@ -320,27 +328,27 @@ export function FactoryDispatchView() {
                 </div>
               ))}
 
-              <div className="pt-2 border-t border-gray-100">
+              <div className="pt-2 border-t border-white/10">
                 <input
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Notas para Bodega (Opcional)"
-                  className="w-full p-2.5 bg-[#F5F4F0] border border-gray-200 rounded-xl text-xs outline-none mb-3"
+                  className="w-full p-3 bg-[#231934] border border-white/10 rounded-xl text-xs text-white outline-none focus:border-[#246bfd] mb-3"
                 />
 
-                <div className="flex justify-between items-center bg-[#FAF8F5] p-3 rounded-xl mb-3">
-                  <span className="text-xs font-bold text-gray-600">Total Surtido ({totalSurtidoUnits} uds):</span>
-                  <span className="text-sm font-black text-gray-900">{formatCurrency(totalSurtidoValue)}</span>
+                <div className="flex justify-between items-center bg-[#231934] p-3 rounded-2xl mb-3 border border-white/10">
+                  <span className="text-xs font-bold text-[#a497be]">Total ({totalSurtidoUnits} uds):</span>
+                  <span className="text-sm font-black text-white">{formatCurrency(totalSurtidoValue)}</span>
                 </div>
 
                 <Button
                   onClick={handleDispatchSurtido}
                   disabled={isCreatingDispatch}
-                  className="w-full bg-black hover:bg-gray-800 text-white font-black h-12 rounded-xl text-sm shadow-md"
+                  className="w-full bg-[#246bfd] hover:bg-[#1a4ec8] text-white font-black h-12 rounded-2xl text-sm shadow-lg shadow-[#246bfd]/30"
                 >
                   <Send className="size-4 mr-2" />
-                  {isCreatingDispatch ? "Despachando a Bodega..." : "Despachar Surtido a Bodega →"}
+                  {isCreatingDispatch ? "Despachando..." : "Despachar Surtido a Bodega →"}
                 </Button>
               </div>
             </div>
@@ -348,24 +356,24 @@ export function FactoryDispatchView() {
         </section>
 
         {/* RECENT DISPATCHES */}
-        <section className="bg-white rounded-[28px] p-5 border border-gray-100 shadow-xs">
+        <section className="bg-[#2d2244] rounded-[28px] p-5 border border-white/10 shadow-lg">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-black text-gray-900">Historial Reciente de Fábrica</h2>
-            <Clock className="size-4 text-gray-400" />
+            <h2 className="text-sm font-black text-white">Historial de Fábrica</h2>
+            <Clock className="size-4 text-[#a497be]" />
           </div>
 
           {factoryDispatches.length === 0 ? (
-            <p className="text-xs text-gray-400 py-3 text-center">No hay registros recientes.</p>
+            <p className="text-xs text-[#a497be] py-3 text-center">No hay registros recientes.</p>
           ) : (
             <div className="space-y-2">
               {factoryDispatches.slice(0, 5).map(disp => (
-                <div key={disp.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50 text-xs">
+                <div key={disp.id} className="flex items-center justify-between p-3 rounded-2xl bg-[#231934] text-xs border border-white/10">
                   <div>
-                    <span className="font-bold text-gray-900 block">#{disp.dispatchNumber} - {disp.toLocationName}</span>
-                    <span className="text-[11px] text-gray-500">{new Date(disp.dispatchedAt).toLocaleDateString()}</span>
+                    <span className="font-bold text-white block">#{disp.dispatchNumber} - {disp.toLocationName}</span>
+                    <span className="text-[11px] text-[#a497be]">{new Date(disp.dispatchedAt).toLocaleDateString()}</span>
                   </div>
                   <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                    disp.status === "received" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                    disp.status === "received" ? "bg-[#8ec97b]/20 text-[#8ec97b]" : "bg-[#f79193]/20 text-[#f79193]"
                   }`}>
                     {disp.status === "received" ? "Recibido en Bodega" : "En camino"}
                   </span>

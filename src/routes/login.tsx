@@ -38,10 +38,10 @@ function LoginPage() {
 
   if (sessionLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#FAF8F5]">
+      <main className="flex min-h-screen items-center justify-center bg-[#231934]">
         <div className="flex flex-col items-center gap-3">
-          <div className="size-8 animate-spin rounded-full border-3 border-black border-t-transparent" />
-          <span className="text-xs font-bold text-gray-500">Cargando sesión...</span>
+          <div className="size-8 animate-spin rounded-full border-3 border-[#246bfd] border-t-transparent" />
+          <span className="text-xs font-bold text-[#a497be]">Cargando sesión...</span>
         </div>
       </main>
     );
@@ -86,24 +86,24 @@ function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#FAF8F5] px-5 py-12 selection:bg-amber-200">
-      <div className="w-full max-w-sm rounded-[32px] bg-white p-8 shadow-sm border border-gray-100">
+    <main className="flex min-h-screen items-center justify-center bg-[#231934] px-5 py-12 selection:bg-[#246bfd]/30 text-white">
+      <div className="w-full max-w-sm rounded-[32px] bg-[#2d2244] p-8 shadow-2xl border border-white/10">
         
         {/* Hourglass Icon Logo */}
-        <div className="flex size-14 items-center justify-center rounded-2xl bg-black text-white shadow-xs mb-6">
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-[#246bfd] text-white shadow-lg shadow-[#246bfd]/30 mb-6">
           <span className="text-2xl">⏳</span>
         </div>
 
-        <h1 className="text-2xl font-black tracking-tight text-gray-900">
+        <h1 className="text-2xl font-black tracking-tight text-white">
           Iniciar Sesión
         </h1>
-        <p className="mt-1 text-xs font-medium text-gray-500">
-          Ingresa tus credenciales oficiales de Supabase para continuar.
+        <p className="mt-1 text-xs font-medium text-[#a497be]">
+          Acceso corporativo directo de Supabase Auth.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleLogin}>
           <div>
-            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-1.5" htmlFor="email">
+            <label className="text-[11px] font-bold text-[#a497be] uppercase tracking-wider block mb-1.5" htmlFor="email">
               Correo Corporativo
             </label>
             <input
@@ -115,16 +115,16 @@ function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               disabled={isSubmitting}
               required
-              className="w-full bg-[#FAF8F5] border border-gray-200 rounded-2xl p-3.5 text-sm font-medium outline-none focus:border-black transition-colors"
+              className="w-full bg-[#231934] border border-white/10 rounded-2xl p-3.5 text-sm font-medium text-white outline-none focus:border-[#246bfd] transition-colors"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider" htmlFor="password">
+              <label className="text-[11px] font-bold text-[#a497be] uppercase tracking-wider" htmlFor="password">
                 Contraseña
               </label>
-              <Link to="/forgot-password" className="text-xs font-bold text-gray-400 hover:text-black transition-colors">
+              <Link to="/forgot-password" className="text-xs font-bold text-[#a497be] hover:text-white transition-colors">
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
@@ -137,11 +137,11 @@ function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 disabled={isSubmitting}
                 required
-                className="w-full bg-[#FAF8F5] border border-gray-200 rounded-2xl p-3.5 pr-11 text-sm font-medium outline-none focus:border-black transition-colors"
+                className="w-full bg-[#231934] border border-white/10 rounded-2xl p-3.5 pr-11 text-sm font-medium text-white outline-none focus:border-[#246bfd] transition-colors"
               />
               <button
                 type="button"
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#a497be] hover:text-white"
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isSubmitting}
               >
@@ -153,7 +153,7 @@ function LoginPage() {
           <div className="pt-2">
             <Button 
               type="submit" 
-              className="w-full h-13 rounded-full bg-black hover:bg-gray-900 text-white font-black text-sm tracking-wide shadow-md active:scale-95 transition-transform" 
+              className="w-full h-13 rounded-2xl bg-[#246bfd] hover:bg-[#1a4ec8] text-white font-black text-sm tracking-wide shadow-lg shadow-[#246bfd]/30 active:scale-95 transition-transform" 
               disabled={isSubmitting}
             >
               {isSubmitting ? (
@@ -168,8 +168,8 @@ function LoginPage() {
           </div>
         </form>
 
-        <div className="mt-6 pt-4 border-t border-gray-100 flex items-center justify-center gap-1.5 text-[11px] font-bold text-gray-400">
-          <ShieldCheck className="size-4 text-emerald-600" />
+        <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-center gap-1.5 text-[11px] font-bold text-[#a497be]">
+          <ShieldCheck className="size-4 text-[#8ec97b]" />
           <span>Conexión cifrada & autenticada</span>
         </div>
       </div>
