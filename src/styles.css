@@ -5,12 +5,12 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Sistema de diseño iOS Human Interface - Paleta Dark Obsidian
- * Base: #231934
- * Azul Primario iOS: #246bfd
- * Coral / Salmon: #f79193
- * Verde Menta / Stock: #8ec97b
- * Superficie tarjetas: #2d2244 / #372b53
+ * Sistema de diseño Matte Black Luxury (Negro Mate / Stealth Titanium)
+ * Base: #09090b
+ * Tarjeta / Superficie: #121216 / #17171d
+ * Azul Acción iOS: #2563eb
+ * Verde Menta / Stock: #10b981
+ * Blanco / Coral Acento: #f43f5e / #e2e8f0
  */
 
 @theme inline {
@@ -58,59 +58,59 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.35);
-  --shadow-elevated: 0 12px 36px -4px rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.55);
+  --shadow-elevated: 0 12px 36px -4px rgba(0, 0, 0, 0.75);
 }
 
 :root {
   --radius: 1.25rem;
 
-  /* Fondo Dark Obsidian iOS #231934 */
-  --background: #231934;
-  --foreground: #f3f0f7;
+  /* Fondo Negro Mate #09090b */
+  --background: #09090b;
+  --foreground: #f4f4f6;
   
-  /* Tarjetas y superficies #2d2244 */
-  --card: #2d2244;
+  /* Tarjetas y superficies Negro Mate #121216 */
+  --card: #121216;
   --card-foreground: #ffffff;
-  --popover: #2d2244;
+  --popover: #121216;
   --popover-foreground: #ffffff;
 
-  /* Azul Eléctrico iOS #246bfd */
-  --primary: #246bfd;
+  /* Azul iOS #2563eb */
+  --primary: #2563eb;
   --primary-foreground: #ffffff;
 
-  /* Secundario #372b53 */
-  --secondary: #372b53;
-  --secondary-foreground: #f3f0f7;
-  --muted: #33274d;
-  --muted-foreground: #a497be;
-  --accent: #372b53;
+  /* Superficie secundaria #18181e */
+  --secondary: #18181e;
+  --secondary-foreground: #f4f4f6;
+  --muted: #1c1c22;
+  --muted-foreground: #9496a1;
+  --accent: #1e1e26;
   --accent-foreground: #ffffff;
 
-  /* Estados iOS */
-  --destructive: #f75555;
+  /* Estados */
+  --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --success: #8ec97b;
-  --success-foreground: #14280f;
-  --warning: #f79193;
-  --warning-foreground: #341215;
-  --info: #246bfd;
+  --success: #10b981;
+  --success-foreground: #064e3b;
+  --warning: #f59e0b;
+  --warning-foreground: #451a03;
+  --info: #2563eb;
   --info-foreground: #ffffff;
 
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
   --input: rgba(255, 255, 255, 0.08);
-  --ring: #246bfd;
+  --ring: #2563eb;
 
   /* Sidebar */
-  --sidebar: #1e152d;
-  --sidebar-foreground: #d3cbe2;
-  --sidebar-primary: #246bfd;
+  --sidebar: #0e0e12;
+  --sidebar-foreground: #d1d5db;
+  --sidebar-primary: #2563eb;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2d2244;
+  --sidebar-accent: #18181e;
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: #246bfd;
+  --sidebar-ring: #2563eb;
 }
 
 @layer base {
@@ -119,8 +119,8 @@
   }
 
   body {
-    background-color: #231934;
-    color: #f3f0f7;
+    background-color: #09090b;
+    color: #f4f4f6;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -131,7 +131,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid #246bfd;
+    outline: 2px solid #2563eb;
     outline-offset: 2px;
   }
 }
@@ -142,10 +142,10 @@
 }
 
 @utility surface {
-  background-color: #2d2244;
+  background-color: #121216;
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-2xl);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
 }
 
 /* Ocultar badge de Lovable */
