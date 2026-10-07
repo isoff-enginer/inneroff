@@ -63,54 +63,54 @@
 }
 
 :root {
-  --radius: 1.25rem;
+  --radius: 1.5rem;
 
-  /* Fondo Dark Obsidian iOS #231934 */
-  --background: #231934;
-  --foreground: #f3f0f7;
+  /* Fondo Warm Beige #FAF7F2 */
+  --background: #FAF7F2;
+  --foreground: #18181B;
   
-  /* Tarjetas y superficies #2d2244 */
-  --card: #2d2244;
-  --card-foreground: #ffffff;
-  --popover: #2d2244;
-  --popover-foreground: #ffffff;
+  /* Tarjetas y superficies */
+  --card: #FFFFFF;
+  --card-foreground: #18181B;
+  --popover: #FFFFFF;
+  --popover-foreground: #18181B;
 
-  /* Azul Eléctrico iOS #246bfd */
-  --primary: #246bfd;
-  --primary-foreground: #ffffff;
+  /* Amarillo Soleado #FEE867 */
+  --primary: #FEE867;
+  --primary-foreground: #18181B;
 
-  /* Secundario #372b53 */
-  --secondary: #372b53;
-  --secondary-foreground: #f3f0f7;
-  --muted: #33274d;
-  --muted-foreground: #a497be;
-  --accent: #372b53;
-  --accent-foreground: #ffffff;
+  /* Secundario y Muted */
+  --secondary: #F1ECE1;
+  --secondary-foreground: #18181B;
+  --muted: #F5F1E8;
+  --muted-foreground: #78716C;
+  --accent: #FEE867;
+  --accent-foreground: #18181B;
 
-  /* Estados iOS */
-  --destructive: #f75555;
-  --destructive-foreground: #ffffff;
-  --success: #8ec97b;
-  --success-foreground: #14280f;
-  --warning: #f79193;
-  --warning-foreground: #341215;
-  --info: #246bfd;
-  --info-foreground: #ffffff;
+  /* Estados */
+  --destructive: #EF4444;
+  --destructive-foreground: #FFFFFF;
+  --success: #10B981;
+  --success-foreground: #FFFFFF;
+  --warning: #F59E0B;
+  --warning-foreground: #18181B;
+  --info: #3B82F6;
+  --info-foreground: #FFFFFF;
 
-  --border: rgba(255, 255, 255, 0.08);
-  --border-strong: rgba(255, 255, 255, 0.16);
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: #246bfd;
+  --border: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.16);
+  --input: rgba(0, 0, 0, 0.08);
+  --ring: #18181B;
 
   /* Sidebar */
-  --sidebar: #1e152d;
-  --sidebar-foreground: #d3cbe2;
-  --sidebar-primary: #246bfd;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #2d2244;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: #246bfd;
+  --sidebar: #FAF7F2;
+  --sidebar-foreground: #18181B;
+  --sidebar-primary: #FEE867;
+  --sidebar-primary-foreground: #18181B;
+  --sidebar-accent: #F1ECE1;
+  --sidebar-accent-foreground: #18181B;
+  --sidebar-border: rgba(0, 0, 0, 0.06);
+  --sidebar-ring: #18181B;
 }
 
 @layer base {
