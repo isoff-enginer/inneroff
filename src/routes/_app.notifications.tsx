@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Bell, CheckCheck, Send, Package, AlertTriangle, ShieldCheck, Wallet } from "lucide-react";
+import { Bell, CheckCheck, Send, Package, AlertTriangle, ShieldCheck } from "lucide-react";
 import { EmptyState } from "@/components/common/states";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -52,22 +52,21 @@ function NotificationsPage() {
   };
 
   const getIcon = (type: string) => {
-    if (type === "dispatch") return <Send className="size-4 text-[#f79193]" />;
-    if (type === "receipt") return <Package className="size-4 text-[#8ec97b]" />;
-    if (type === "payment") return <Wallet className="size-4 text-[#8ec97b]" />;
-    if (type === "security") return <ShieldCheck className="size-4 text-[#246bfd]" />;
-    if (type === "alert") return <AlertTriangle className="size-4 text-[#f75555]" />;
-    return <Bell className="size-4 text-[#a497be]" />;
+    if (type === "dispatch") return <Send className="size-4 text-amber-500" />;
+    if (type === "receipt") return <Package className="size-4 text-emerald-500" />;
+    if (type === "security") return <ShieldCheck className="size-4 text-blue-500" />;
+    if (type === "alert") return <AlertTriangle className="size-4 text-rose-500" />;
+    return <Bell className="size-4 text-gray-500" />;
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#231934] pb-24 text-white">
-      <header className="sticky top-0 z-10 bg-[#1e152d]/90 backdrop-blur-md border-b border-white/10 px-5 pt-4 pb-3">
-        <div className="flex items-center justify-between mb-2">
+    <div className="flex flex-col min-h-screen bg-gray-50 pb-20 sm:pb-8">
+      <header className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 pt-5 pb-4">
+        <div className="flex items-center justify-between mb-3">
           <div>
-            <h1 className="text-2xl font-black text-white">Notificaciones</h1>
-            <p className="text-xs text-[#a497be] mt-0.5">
-              Alertas operativas y recaudos en tiempo real
+            <h1 className="text-2xl font-bold text-gray-900">Notificaciones</h1>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Alertas operativas y avisos de despachos en tiempo real
             </p>
           </div>
           <div className="flex gap-2">
@@ -75,36 +74,36 @@ function NotificationsPage() {
               variant="outline"
               size="sm"
               onClick={handleEnablePush}
-              className="text-xs font-bold rounded-2xl h-8 border-white/10 bg-[#2d2244] text-white hover:bg-[#34274e]"
+              className="text-xs font-semibold rounded-xl h-8 border-gray-200"
             >
-              <Bell className="size-3.5 mr-1 text-[#246bfd]" />
-              Push
+              <Bell className="size-3.5 mr-1" />
+              Activar Push
             </Button>
             {unreadCount > 0 && (
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={markAllAsRead}
-                className="text-xs font-bold h-8 text-[#a497be] hover:text-white"
+                className="text-xs font-semibold h-8"
               >
                 <CheckCheck className="size-3.5 mr-1" />
-                Leídas
+                Marcar leídas
               </Button>
             )}
           </div>
         </div>
       </header>
 
-      <main className="flex-1 px-5 pt-3 max-w-md mx-auto w-full">
+      <main className="flex-1 px-4 pt-3">
         <Tabs defaultValue="all">
-          <TabsList className="bg-[#2d2244] p-1 rounded-2xl border border-white/10 w-full grid grid-cols-3">
-            <TabsTrigger value="all" className="text-xs font-bold rounded-xl data-[state=active]:bg-[#246bfd] data-[state=active]:text-white text-[#a497be]">
+          <TabsList className="bg-gray-100 p-1 rounded-xl">
+            <TabsTrigger value="all" className="text-xs font-bold rounded-lg">
               Todas ({notifications.length})
             </TabsTrigger>
-            <TabsTrigger value="unread" className="text-xs font-bold rounded-xl data-[state=active]:bg-[#246bfd] data-[state=active]:text-white text-[#a497be]">
+            <TabsTrigger value="unread" className="text-xs font-bold rounded-lg">
               No leídas ({unread.length})
             </TabsTrigger>
-            <TabsTrigger value="read" className="text-xs font-bold rounded-xl data-[state=active]:bg-[#246bfd] data-[state=active]:text-white text-[#a497be]">
+            <TabsTrigger value="read" className="text-xs font-bold rounded-lg">
               Leídas
             </TabsTrigger>
           </TabsList>
@@ -120,46 +119,46 @@ function NotificationsPage() {
               {isLoading ? (
                 <div className="space-y-2">
                   {[1, 2, 3].map(i => (
-                    <div key={i} className="h-16 bg-[#2d2244] rounded-2xl animate-pulse" />
+                    <div key={i} className="h-16 bg-gray-200 rounded-xl animate-pulse" />
                   ))}
                 </div>
               ) : items.length === 0 ? (
-                <div className="py-16 text-center text-[#a497be]">
-                  <Bell className="size-10 mx-auto mb-2 opacity-30 text-[#246bfd]" />
-                  <p className="text-sm font-medium">Sin notificaciones en esta sección.</p>
-                </div>
+                <EmptyState
+                  title="Sin notificaciones"
+                  description="Aquí verás los avisos de despachos, recepciones de inventario y alertas del sistema."
+                />
               ) : (
-                <div className="space-y-2.5">
+                <div className="space-y-2">
                   {items.map((notification) => (
                     <div
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
-                      className={`p-4 rounded-[22px] border transition-all cursor-pointer flex items-start gap-3.5 ${
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start gap-3 ${
                         notification.isRead
-                          ? "bg-[#2d2244]/60 border-white/5 opacity-80"
-                          : "bg-[#2d2244] border-[#246bfd]/40 shadow-lg shadow-[#246bfd]/10 ring-1 ring-[#246bfd]/30"
+                          ? "bg-white border-gray-100 opacity-80"
+                          : "bg-white border-primary/20 shadow-xs ring-1 ring-primary/10"
                       }`}
                     >
-                      <div className="p-2.5 rounded-2xl bg-[#231934] border border-white/10 shrink-0 mt-0.5">
+                      <div className="p-2 rounded-xl bg-gray-50 border border-gray-100 shrink-0 mt-0.5">
                         {getIcon(notification.type)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2 mb-0.5">
-                          <span className={`text-sm truncate ${notification.isRead ? 'font-medium text-white/90' : 'font-black text-white'}`}>
+                          <span className={`text-sm truncate ${notification.isRead ? 'font-medium text-gray-800' : 'font-bold text-gray-900'}`}>
                             {notification.title}
                           </span>
-                          <span className="text-[11px] text-[#a497be] whitespace-nowrap shrink-0">
+                          <span className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
                             {new Date(notification.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
                         {notification.body && (
-                          <p className="text-xs text-[#a497be] line-clamp-2 mt-0.5 leading-relaxed">
+                          <p className="text-xs text-gray-600 line-clamp-2 mt-0.5 leading-relaxed">
                             {notification.body}
                           </p>
                         )}
                       </div>
                       {!notification.isRead && (
-                        <div className="size-2.5 rounded-full bg-[#f79193] mt-2 shrink-0" />
+                        <div className="size-2 rounded-full bg-primary mt-2 shrink-0" />
                       )}
                     </div>
                   ))}
