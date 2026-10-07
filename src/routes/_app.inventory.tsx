@@ -44,6 +44,7 @@ function InventoryPage() {
   const [view, setView] = useState<ViewType>("products");
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("todos");
+  const [locationFilter, setLocationFilter] = useState<"all" | "warehouse" | "store" | "factory">("all");
   
   // Product Detail Drawer
   const [selectedProduct, setSelectedProduct] = useState<InventoryProduct | null>(null);
@@ -82,11 +83,12 @@ function InventoryPage() {
   const filteredInventory = useMemo(() => {
     return inventory.filter(item => {
       if (search && !item.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (locationFilter !== "all" && item.locationType !== locationFilter) return false;
       if (filter === "poco_stock" && item.status !== "poco_stock") return false;
       if (filter === "agotados" && item.status !== "agotado") return false;
       return true;
     });
-  }, [inventory, search, filter]);
+  }, [inventory, search, filter, locationFilter]);
 
   const lowStockCount = inventory.filter(i => i.status === "poco_stock").length;
 
@@ -272,6 +274,36 @@ function InventoryPage() {
                 Agotados
               </button>
             </div>
+
+            {isBoss && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pt-2 pb-0.5 scrollbar-hide border-t border-gray-100 mt-2">
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mr-1">Sede:</span>
+                <button
+                  onClick={() => setLocationFilter("all")}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors ${locationFilter === "all" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                >
+                  Todas
+                </button>
+                <button
+                  onClick={() => setLocationFilter("warehouse")}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors ${locationFilter === "warehouse" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                >
+                  Bodega
+                </button>
+                <button
+                  onClick={() => setLocationFilter("store")}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors ${locationFilter === "store" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                >
+                  Tienda
+                </button>
+                <button
+                  onClick={() => setLocationFilter("factory")}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-lg transition-colors ${locationFilter === "factory" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}
+                >
+                  Fábrica
+                </button>
+              </div>
+            )}
           </>
         )}
       </header>
@@ -302,6 +334,14 @@ function InventoryPage() {
                     <span className="text-[15px] font-bold text-gray-900 leading-snug truncate">{item.name}</span>
                     <div className="flex items-center gap-2">
                       <span className="text-[12px] text-gray-500 font-medium">{item.category}</span>
+                      {isBoss && (
+                        <>
+                          <span className="text-gray-300 text-xs">•</span>
+                          <span className="text-[11px] bg-gray-100 text-gray-700 px-1.5 py-0.5 rounded font-medium">
+                            {item.locationType === "warehouse" ? "Bodega" : item.locationType === "store" ? "Tienda" : "Fábrica"}
+                          </span>
+                        </>
+                      )}
                       <span className="text-gray-300 text-xs">•</span>
                       {renderStatus(item.status)}
                     </div>
@@ -343,9 +383,20 @@ function InventoryPage() {
           {selectedProduct && (
             <div className="flex flex-col h-full max-h-[85vh]">
               <div className="flex flex-col items-center text-center py-5 border-b border-gray-200/60">
-                <span className="text-[12px] font-bold uppercase tracking-wider text-gray-400 mb-0.5">{selectedProduct.category}</span>
+                <div className="flex items-center gap-1.5 mb-1">
+                  <span className="text-[12px] font-bold uppercase tracking-wider text-gray-400">{selectedProduct.category}</span>
+                  <span className="text-gray-300 text-xs">•</span>
+                  <span className="text-[11px] bg-gray-200 text-gray-700 px-2 py-0.5 rounded-md font-semibold">
+                    {selectedProduct.locationType === "warehouse" ? "Bodega Principal" : selectedProduct.locationType === "store" ? "Tienda" : "Fábrica"}
+                  </span>
+                </div>
                 <h2 className="text-2xl font-black text-gray-900 mb-1">{selectedProduct.name}</h2>
-                <span className="text-[14px] font-semibold text-gray-600 mb-3">${selectedProduct.unitValue.toLocaleString()}</span>
+                <span className="text-[14px] font-semibold text-gray-600 mb-1">${selectedProduct.unitValue.toLocaleString()} / {selectedProduct.unitName || "unidad"}</span>
+                {selectedProduct.description && (
+                  <p className="text-[12px] text-gray-500 max-w-xs mb-3 font-medium bg-gray-100 px-3 py-1 rounded-lg">
+                    {selectedProduct.description}
+                  </p>
+                )}
                 
                 <div className="flex items-center justify-center gap-6">
                   <div className="flex flex-col items-center">
