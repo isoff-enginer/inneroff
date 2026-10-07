@@ -1,18 +1,26 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Plus, ArrowRight, CheckCircle, Package, Send, Clock, Calendar, User } from "lucide-react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { 
+  Plus, 
+  ArrowRight, 
+  CheckCircle2, 
+  Package, 
+  Send, 
+  Clock, 
+  Calendar, 
+  ChevronLeft,
+  SlidersHorizontal,
+  X,
+  Store,
+  Factory,
+  Archive,
+  CircleDollarSign
+} from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { SearchBar } from "@/components/common/search-bar";
-import { StatusBadge } from "@/components/common/status-badge";
-import { EmptyState } from "@/components/common/states";
 import { Button } from "@/components/ui/button";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
-import {
-  DISPATCH_STATUS_LABELS,
-  DISPATCH_STATUS_TONES,
-} from "@/features/dispatches/mock-data";
 import { formatCurrency } from "@/lib/format";
-import type { DispatchStatus, LocationType } from "@/types/domain";
+import type { LocationType } from "@/types/domain";
 import { useDispatches, type LiveDispatch } from "@/features/dispatches/use-dispatches";
 import { useInventoryData } from "@/features/inventory/use-inventory-data";
 import { useSession } from "@/features/auth/session";
@@ -22,18 +30,13 @@ export const Route = createFileRoute("/_app/dispatches")({
   head: () => ({
     meta: [
       { title: "Despachos · Operaciones" },
-      {
-        name: "description",
-        content: "Flujo operativo de despachos entre fábrica, bodegas y tiendas.",
-      },
     ],
   }),
   component: DispatchesPage,
 });
 
-const ALL = "all";
-
 function DispatchesPage() {
+  const navigate = useNavigate();
   const { user, role } = useSession();
   const { dispatches, locations, isLoading, createDispatch, isCreatingDispatch, receiveDispatch, isReceivingDispatch } = useDispatches();
   const { allProducts } = useInventoryData();
@@ -48,18 +51,12 @@ function DispatchesPage() {
 
   // Create dispatch modal/drawer
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [fromType, setFromType] = useState<LocationType>(
-    role === "warehouse" ? "warehouse" : role === "store" ? "store" : "factory"
-  );
-  const [fromId, setFromId] = useState(
-    role === "warehouse" ? user?.warehouseId || "" : role === "factory" ? user?.factoryId || "" : ""
-  );
-  const [toType, setToType] = useState<LocationType>(
-    role === "factory" ? "warehouse" : "store"
-  );
+  const [fromType, setFromType] = useState<LocationType>("warehouse");
+  const [fromId, setFromId] = useState("");
+  const [toType, setToType] = useState<LocationType>("store");
   const [toId, setToId] = useState("");
   const [dispatchNotes, setDispatchNotes] = useState("");
-  const [selectedItems, setSelectedItems] = useState<{ productId: string; quantity: number; unitValue: number }[]>([]);
+  const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; quantity: number; unitValue: number }[]>([]);
 
   // Filtered dispatches
   const filteredDispatches = useMemo(() => {
@@ -68,10 +65,7 @@ function DispatchesPage() {
       const matchesQuery = text.includes(query.trim().toLowerCase());
       if (!matchesQuery) return false;
 
-      if (filterTab === "por_recibir") {
-        return dispatch.status === "dispatched";
-      }
-      if (filterTab === "despachados") {
+      if (filterTab === "por_recibir" || filterTab === "despachados") {
         return dispatch.status === "dispatched";
       }
       if (filterTab === "recibidos") {
@@ -80,8 +74,6 @@ function DispatchesPage() {
       return true;
     });
   }, [dispatches, query, filterTab]);
-
-  const pendingReceiveCount = dispatches.filter(d => d.status === "dispatched").length;
 
   const handleOpenDetail = (d: LiveDispatch) => {
     setSelectedDispatch(d);
@@ -96,7 +88,7 @@ function DispatchesPage() {
         dispatchId: selectedDispatch.id,
         notes: receiveNotes,
       });
-      toast.success(`Despacho #${selectedDispatch.dispatchNumber} recibido y aceptado exitosamente`);
+      toast.success(`Despacho #${selectedDispatch.dispatchNumber} recibido exitosamente`);
       setIsDetailOpen(false);
     } catch (err: any) {
       toast.error(err.message || "Error al recibir despacho");
@@ -110,7 +102,7 @@ function DispatchesPage() {
 
     setSelectedItems(prev => [
       ...prev,
-      { productId, quantity: 1, unitValue: Number(prod.unit_value || 0) }
+      { productId, name: prod.name, quantity: 1, unitValue: Number(prod.unit_value || 0) }
     ]);
   };
 
@@ -118,8 +110,8 @@ function DispatchesPage() {
     setSelectedItems(prev =>
       prev.map(item => {
         if (item.productId === productId) {
-          const newQty = Math.max(1, item.quantity + delta);
-          return { ...item, quantity: newQty };
+          const newQ = Math.max(1, item.quantity + delta);
+          return { ...item, quantity: newQ };
         }
         return item;
       })
@@ -131,8 +123,11 @@ function DispatchesPage() {
   };
 
   const handleCreateDispatchSubmit = async () => {
-    if (!fromId || !toId) {
-      toast.error("Selecciona origen y destino");
+    const effectiveFromId = fromId || (fromType === "warehouse" ? locations.warehouses[0]?.id : locations.factories[0]?.id) || "";
+    const effectiveToId = toId || (toType === "store" ? locations.stores[0]?.id : locations.warehouses[0]?.id) || "";
+
+    if (!effectiveFromId || !effectiveToId) {
+      toast.error("Selecciona el origen y el destino del despacho");
       return;
     }
     if (selectedItems.length === 0) {
@@ -142,19 +137,19 @@ function DispatchesPage() {
 
     try {
       await createDispatch({
-        fromLocationType: fromType,
-        fromId,
-        toLocationType: toType,
-        toId,
-        items: selectedItems.map(i => ({
-          product_id: i.productId,
-          quantity: i.quantity,
-          unit_value: i.unitValue,
-        })),
+        fromType,
+        fromId: effectiveFromId,
+        toType,
+        toId: effectiveToId,
         notes: dispatchNotes,
+        items: selectedItems.map(i => ({
+          productId: i.productId,
+          quantity: i.quantity,
+          unitValue: i.unitValue
+        }))
       });
 
-      toast.success("Despacho creado y enviado exitosamente");
+      toast.success("Despacho creado exitosamente");
       setIsCreateOpen(false);
       setSelectedItems([]);
       setDispatchNotes("");
@@ -163,233 +158,175 @@ function DispatchesPage() {
     }
   };
 
-  const canCreateDispatch = role === "boss" || role === "boss_admin" || role === "operations_admin" || role === "factory" || role === "warehouse";
+  const totalValueOfItems = selectedItems.reduce((acc, curr) => acc + (curr.quantity * curr.unitValue), 0);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50 pb-20 sm:pb-8">
-      {/* HEADER */}
-      <header className="sticky top-0 z-10 bg-white border-b border-gray-100 px-4 pt-5 pb-4">
-        <div className="flex items-center justify-between mb-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Despachos</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {role === "warehouse" ? "Recibe de fábrica y despacha a tiendas" : "Flujo de envíos y recepciones"}
-            </p>
+    <div className="min-h-screen bg-[#FAF7F2] text-stone-900 pb-28 font-sans">
+      <div className="mx-auto max-w-md px-5 pt-3 space-y-4">
+        
+        {/* HEADER */}
+        <header className="flex items-center justify-between py-2">
+          <button 
+            onClick={() => navigate({ to: "/dashboard" })}
+            className="flex size-10 items-center justify-center rounded-full bg-white border border-stone-200/80 shadow-2xs text-stone-700 active:scale-95 transition-transform"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+
+          <h1 className="text-lg font-black tracking-tight text-stone-950">
+            Despachos
+          </h1>
+
+          <button 
+            onClick={() => setIsCreateOpen(true)}
+            className="flex size-10 items-center justify-center rounded-full bg-[#FEE867] border border-stone-900/10 shadow-2xs text-stone-950 active:scale-95 transition-transform"
+          >
+            <Plus className="size-5 stroke-[2.5]" />
+          </button>
+        </header>
+
+        {/* SEARCH & FILTERS */}
+        <div className="flex items-center gap-2.5">
+          <div className="relative flex-1">
+            <input 
+              type="text" 
+              className="block w-full pl-4 pr-10 py-3 rounded-2xl bg-white border border-stone-200/80 text-[14px] text-stone-900 placeholder:text-stone-400 outline-none focus:ring-2 focus:ring-stone-900 shadow-2xs"
+              placeholder="Buscar por #, origen, destino..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {query && (
+              <button onClick={() => setQuery("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400">
+                <X className="size-4" />
+              </button>
+            )}
           </div>
-          {canCreateDispatch && (
-            <Button
-              onClick={() => {
-                // Auto-set default locations
-                if (role === "factory" && user?.factoryId) {
-                  setFromType("factory");
-                  setFromId(user.factoryId);
-                  setToType("warehouse");
-                  const wh = locations.find(l => l.type === "warehouse");
-                  if (wh) setToId(wh.id);
-                } else if (role === "warehouse" && user?.warehouseId) {
-                  setFromType("warehouse");
-                  setFromId(user.warehouseId);
-                  setToType("store");
-                  const st = locations.find(l => l.type === "store");
-                  if (st) setToId(st.id);
-                }
-                setIsCreateOpen(true);
-              }}
-              className="bg-black text-white font-bold h-10 px-4 rounded-xl shadow-xs active:scale-95"
-            >
-              <Plus className="size-4 mr-1.5" />
-              Nuevo
-            </Button>
-          )}
         </div>
 
-        <div className="flex gap-2 mb-3">
-          <SearchBar
-            value={query}
-            onValueChange={setQuery}
-            placeholder="Buscar por #, origen o destino…"
-            label="Buscar despacho"
-            className="w-full"
-          />
-        </div>
-
+        {/* HORIZONTAL FILTER PILLS */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          <button
+          <button 
             onClick={() => setFilterTab("todos")}
-            className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[12px] font-bold transition-colors ${filterTab === "todos" ? 'bg-black text-white' : 'bg-gray-100 text-gray-600'}`}
+            className={`whitespace-nowrap px-4 py-2 rounded-2xl text-[13px] font-bold transition-colors ${filterTab === "todos" ? 'bg-[#FEE867] text-stone-950 shadow-2xs' : 'bg-white border border-stone-200/80 text-stone-600'}`}
           >
             Todos ({dispatches.length})
           </button>
-          <button
-            onClick={() => setFilterTab("por_recibir")}
-            className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[12px] font-bold transition-colors ${filterTab === "por_recibir" ? 'bg-amber-100 text-amber-800 border border-amber-200' : 'bg-gray-100 text-gray-600'}`}
+          <button 
+            onClick={() => setFilterTab("despachados")}
+            className={`whitespace-nowrap px-4 py-2 rounded-2xl text-[13px] font-bold transition-colors ${filterTab === "despachados" ? 'bg-[#FEE867] text-stone-950 shadow-2xs' : 'bg-white border border-stone-200/80 text-stone-600'}`}
           >
-            Por recibir {pendingReceiveCount > 0 && `(${pendingReceiveCount})`}
+            En Camino
           </button>
-          <button
+          <button 
             onClick={() => setFilterTab("recibidos")}
-            className={`whitespace-nowrap px-3.5 py-1.5 rounded-full text-[12px] font-bold transition-colors ${filterTab === "recibidos" ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-gray-100 text-gray-600'}`}
+            className={`whitespace-nowrap px-4 py-2 rounded-2xl text-[13px] font-bold transition-colors ${filterTab === "recibidos" ? 'bg-[#FEE867] text-stone-950 shadow-2xs' : 'bg-white border border-stone-200/80 text-stone-600'}`}
           >
             Recibidos
           </button>
         </div>
-      </header>
 
-      {/* LISTA DE DESPACHOS */}
-      <main className="flex-1 px-4 pt-3">
+        {/* DISPATCHES LIST */}
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2, 3, 4].map(i => (
-              <div key={i} className="h-28 bg-gray-200 rounded-2xl animate-pulse" />
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-28 bg-white/60 rounded-[28px] animate-pulse border border-stone-200/60" />
             ))}
           </div>
         ) : filteredDispatches.length === 0 ? (
-          <EmptyState
-            title="Sin despachos"
-            description={query ? "No hay despachos con ese filtro." : "No hay registros de despachos aún."}
-          />
+          <div className="flex flex-col items-center justify-center py-20 text-stone-400">
+            <Send className="size-12 mb-3 opacity-30" />
+            <p className="text-[15px] font-semibold">Sin despachos en esta sección</p>
+          </div>
         ) : (
-          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {filteredDispatches.map((dispatch) => {
-              const isPendingReceive = dispatch.status === "dispatched";
+          <div className="space-y-3">
+            {filteredDispatches.map((d) => {
+              const isReceived = d.status === "received";
 
               return (
-                <li
-                  key={dispatch.id}
-                  onClick={() => handleOpenDetail(dispatch)}
-                  className="bg-white p-4 rounded-2xl shadow-xs border border-gray-100 active:scale-[0.99] transition-transform cursor-pointer flex flex-col justify-between"
+                <div 
+                  key={d.id}
+                  onClick={() => handleOpenDetail(d)}
+                  className="p-4 rounded-[28px] bg-white border border-stone-200/80 shadow-2xs hover:border-stone-400 transition-all cursor-pointer active:scale-[0.99] flex flex-col gap-2.5"
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-2.5">
-                      <span className="tabular text-xs font-bold text-gray-400">
-                        #{String(dispatch.dispatchNumber).padStart(4, "0")}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="size-7 rounded-full bg-[#FAF7F2] border border-stone-200 flex items-center justify-center font-black text-xs text-stone-800">
+                        #{d.dispatchNumber}
                       </span>
-                      <StatusBadge tone={DISPATCH_STATUS_TONES[dispatch.status] || "neutral"}>
-                        {DISPATCH_STATUS_LABELS[dispatch.status] || dispatch.status}
-                      </StatusBadge>
+                      <span className="text-[14px] font-black text-stone-900 truncate max-w-[180px]">
+                        {d.toLocationName}
+                      </span>
                     </div>
 
-                    <div className="flex items-center gap-2 text-[14px] font-semibold text-gray-900 mb-2">
-                      <span className="truncate">{dispatch.fromLocationName}</span>
-                      <ArrowRight className="size-4 text-gray-400 shrink-0" />
-                      <span className="truncate">{dispatch.toLocationName}</span>
-                    </div>
-
-                    <div className="text-xs text-muted-foreground flex items-center gap-3">
-                      <span>{dispatch.items.length} {dispatch.items.length === 1 ? 'producto' : 'productos'}</span>
-                      <span>•</span>
-                      <span>{new Date(dispatch.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-sm font-bold text-gray-900">
-                      {formatCurrency(dispatch.totalValue)}
+                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
+                      isReceived ? 'bg-emerald-100 text-emerald-800' : 'bg-[#FEE867] text-stone-950'
+                    }`}>
+                      {isReceived ? "Recibido" : "Enviado"}
                     </span>
-                    {isPendingReceive && (
-                      <span className="text-[11px] font-bold text-amber-600 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200">
-                        Pendiente recibir
-                      </span>
-                    )}
                   </div>
-                </li>
+
+                  <div className="flex items-center justify-between text-[12px] text-stone-500 font-semibold border-t border-stone-100 pt-2">
+                    <span className="flex items-center gap-1">
+                      {d.fromLocationName} <ArrowRight className="size-3 text-stone-400" /> {d.toLocationName}
+                    </span>
+                    <span className="text-[14px] font-black text-stone-950">
+                      {formatCurrency(d.totalValue || 0)}
+                    </span>
+                  </div>
+                </div>
               );
             })}
-          </ul>
+          </div>
         )}
-      </main>
 
-      {/* DRAWER: DETALLE DEL DESPACHO & ACCIÓN DE RECEPCIÓN */}
+      </div>
+
+      {/* DRAWER: DETALLE DE DESPACHO */}
       <Drawer open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DrawerContent className="bg-white border-t-0 px-5 pb-8">
+        <DrawerContent className="bg-[#FAF7F2] border-t-0 px-5 pb-8">
           {selectedDispatch && (
             <div className="flex flex-col max-h-[85vh]">
-              <div className="py-4 border-b border-gray-100 flex items-center justify-between">
-                <div>
-                  <span className="text-xs font-bold text-gray-400 uppercase">
-                    Despacho #{String(selectedDispatch.dispatchNumber).padStart(4, "0")}
-                  </span>
-                  <h2 className="text-xl font-black text-gray-900 mt-0.5">
-                    {selectedDispatch.fromLocationName} → {selectedDispatch.toLocationName}
-                  </h2>
-                </div>
-                <StatusBadge tone={DISPATCH_STATUS_TONES[selectedDispatch.status] || "neutral"}>
-                  {DISPATCH_STATUS_LABELS[selectedDispatch.status]}
-                </StatusBadge>
+              <div className="py-3 border-b border-stone-200 mb-3 text-center">
+                <span className="text-[11px] font-black uppercase text-stone-400">Detalle de Envío</span>
+                <h2 className="text-2xl font-black text-stone-950">Despacho #{selectedDispatch.dispatchNumber}</h2>
               </div>
 
-              <div className="flex-1 overflow-y-auto py-4 space-y-4 scrollbar-hide">
-                {/* ITEMS */}
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-2">
-                    Productos ({selectedDispatch.items.length})
-                  </h3>
-                  <div className="space-y-2">
-                    {selectedDispatch.items.map(item => (
-                      <div
-                        key={item.id}
-                        className="bg-gray-50 p-3 rounded-xl flex items-center justify-between border border-gray-100"
-                      >
-                        <div>
-                          <span className="text-sm font-bold text-gray-900 block">{item.productName}</span>
-                          <span className="text-xs text-gray-500">${item.unitValue.toLocaleString()} c/u</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-sm font-black text-gray-900 block">{item.quantity} {item.unitName}</span>
-                          <span className="text-xs font-semibold text-gray-600">${item.totalValue.toLocaleString()}</span>
-                        </div>
+              <div className="space-y-3 flex-1 overflow-y-auto pb-3">
+                <div className="p-4 rounded-2xl bg-white border border-stone-200/80 space-y-2">
+                  <div className="flex justify-between text-[13px]">
+                    <span className="font-semibold text-stone-500">Origen:</span>
+                    <span className="font-black text-stone-900">{selectedDispatch.fromLocationName}</span>
+                  </div>
+                  <div className="flex justify-between text-[13px]">
+                    <span className="font-semibold text-stone-500">Destino (Tienda):</span>
+                    <span className="font-black text-stone-900">{selectedDispatch.toLocationName}</span>
+                  </div>
+                  <div className="flex justify-between text-[13px] border-t border-stone-100 pt-2">
+                    <span className="font-semibold text-stone-500">Valor Total:</span>
+                    <span className="font-black text-stone-950 text-base">{formatCurrency(selectedDispatch.totalValue || 0)}</span>
+                  </div>
+                </div>
+
+                {selectedDispatch.items && selectedDispatch.items.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[12px] font-bold text-stone-400 uppercase">Productos incluidos:</span>
+                    {selectedDispatch.items.map((it: any) => (
+                      <div key={it.id} className="flex justify-between p-3 rounded-xl bg-white border border-stone-200 text-[13px]">
+                        <span className="font-bold text-stone-900">{it.products?.name || "Producto"}</span>
+                        <span className="font-black text-stone-700">{it.quantity} unds</span>
                       </div>
                     ))}
                   </div>
-                </div>
+                )}
 
-                {/* INFO ADICIONAL */}
-                <div className="bg-gray-50 p-3.5 rounded-xl space-y-2 text-xs text-gray-600">
-                  <div className="flex justify-between">
-                    <span>Creado por:</span>
-                    <span className="font-semibold text-gray-900">{selectedDispatch.createdByName || "Sistema"}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Fecha:</span>
-                    <span className="font-semibold text-gray-900">{new Date(selectedDispatch.createdAt).toLocaleString()}</span>
-                  </div>
-                  {selectedDispatch.receivedByName && (
-                    <div className="flex justify-between">
-                      <span>Recibido por:</span>
-                      <span className="font-semibold text-gray-900">{selectedDispatch.receivedByName}</span>
-                    </div>
-                  )}
-                  {selectedDispatch.notes && (
-                    <div className="pt-2 border-t border-gray-200">
-                      <span className="block text-gray-400 font-bold mb-1">Notas:</span>
-                      <p className="text-gray-800 italic">{selectedDispatch.notes}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* ACCIÓN ACEPTAR Y RECIBIR DESPACHO */}
                 {selectedDispatch.status === "dispatched" && (
-                  <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl space-y-3">
-                    <div className="flex items-center gap-2 text-emerald-800 font-bold text-sm">
-                      <CheckCircle className="size-5 text-emerald-600" />
-                      <span>Recepción en Destino</span>
-                    </div>
-                    <p className="text-xs text-emerald-700 leading-relaxed">
-                      Al aceptar este despacho, los productos se sumarán automáticamente al inventario de {selectedDispatch.toLocationName}.
-                    </p>
-                    <input
-                      type="text"
-                      placeholder="Nota de recepción (opcional)"
-                      value={receiveNotes}
-                      onChange={(e) => setReceiveNotes(e.target.value)}
-                      className="w-full bg-white border border-emerald-200 rounded-xl p-2.5 text-xs outline-none focus:ring-1 focus:ring-emerald-500"
-                    />
-                    <Button
+                  <div className="pt-2">
+                    <Button 
                       onClick={handleReceiveDispatch}
                       disabled={isReceivingDispatch}
-                      className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm"
+                      className="w-full h-14 rounded-2xl font-black text-[15px] bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
                     >
-                      {isReceivingDispatch ? "Procesando recepción..." : "Aceptar y Recibir Despacho"}
+                      {isReceivingDispatch ? "Confirmando..." : "Confirmar y Recibir Despacho"}
                     </Button>
                   </div>
                 )}
@@ -399,146 +336,124 @@ function DispatchesPage() {
         </DrawerContent>
       </Drawer>
 
-      {/* DRAWER: NUEVO DESPACHO */}
+      {/* DRAWER: CREAR NUEVO DESPACHO */}
       <Drawer open={isCreateOpen} onOpenChange={setIsCreateOpen}>
         <DrawerContent className="bg-white border-t-0 px-5 pb-8">
           <div className="flex flex-col max-h-[85vh]">
-            <div className="py-4 border-b border-gray-100 mb-3 flex-shrink-0">
-              <h2 className="text-xl font-black text-gray-900">Nuevo Despacho</h2>
+            <div className="py-3 border-b border-stone-100 mb-3 flex-shrink-0">
+              <h2 className="text-xl font-black text-stone-900">Crear Nuevo Despacho</h2>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-4 pb-3 scrollbar-hide">
-              {/* ORIGEN Y DESTINO */}
-              <div className="grid grid-cols-2 gap-3">
+            <div className="flex-1 overflow-y-auto space-y-3 pb-3 scrollbar-hide">
+              {/* Selector Origen y Destino */}
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[11px] font-bold text-gray-500 ml-1 mb-1 block uppercase">Origen</label>
-                  <select
-                    value={`${fromType}:${fromId}`}
-                    onChange={(e) => {
-                      const [t, id] = e.target.value.split(":");
-                      setFromType(t as LocationType);
-                      setFromId(id);
-                    }}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-semibold outline-none"
+                  <label className="text-[11px] font-bold text-stone-500 block mb-1">Origen</label>
+                  <select 
+                    value={fromType}
+                    onChange={(e) => setFromType(e.target.value as LocationType)}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3 text-[13px] font-bold outline-none"
                   >
-                    <option value="" disabled>Selecciona origen</option>
-                    {locations.map(loc => (
-                      <option key={`${loc.type}:${loc.id}`} value={`${loc.type}:${loc.id}`}>
-                        {loc.name} ({loc.type})
-                      </option>
-                    ))}
+                    <option value="warehouse">Bodega</option>
+                    <option value="factory">Fábrica</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-bold text-gray-500 ml-1 mb-1 block uppercase">Destino</label>
-                  <select
-                    value={`${toType}:${toId}`}
-                    onChange={(e) => {
-                      const [t, id] = e.target.value.split(":");
-                      setToType(t as LocationType);
-                      setToId(id);
-                    }}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-semibold outline-none"
+                  <label className="text-[11px] font-bold text-stone-500 block mb-1">Destino</label>
+                  <select 
+                    value={toType}
+                    onChange={(e) => setToType(e.target.value as LocationType)}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3 text-[13px] font-bold outline-none"
                   >
-                    <option value="" disabled>Selecciona destino</option>
-                    {locations.map(loc => (
-                      <option key={`${loc.type}:${loc.id}`} value={`${loc.type}:${loc.id}`}>
-                        {loc.name} ({loc.type})
-                      </option>
-                    ))}
+                    <option value="store">Tienda</option>
+                    <option value="warehouse">Bodega</option>
                   </select>
                 </div>
               </div>
 
-              {/* SELECCIONAR PRODUCTOS */}
-              <div>
-                <label className="text-[11px] font-bold text-gray-500 ml-1 mb-1 block uppercase">Agregar Producto</label>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) handleAddItem(e.target.value);
-                  }}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs font-semibold outline-none"
-                >
-                  <option value="">+ Seleccionar producto para agregar...</option>
-                  {allProducts.map(prod => (
-                    <option key={prod.id} value={prod.id}>
-                      {prod.name} (${Number(prod.unit_value || 0).toLocaleString()})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* ITEMS AGREGADOS */}
-              {selectedItems.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-[11px] font-bold text-gray-400 uppercase">Productos a despachar</span>
-                  {selectedItems.map(item => {
-                    const prod = allProducts.find(p => p.id === item.productId);
-                    return (
-                      <div
-                        key={item.productId}
-                        className="bg-gray-50 p-3 rounded-xl flex items-center justify-between border border-gray-100"
-                      >
-                        <div className="min-w-0 pr-2">
-                          <span className="text-xs font-bold text-gray-900 block truncate">{prod?.name || "Producto"}</span>
-                          <span className="text-[11px] text-gray-500">${item.unitValue.toLocaleString()} c/u</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2 bg-white rounded-lg p-1 border border-gray-200">
-                            <button
-                              onClick={() => handleUpdateItemQty(item.productId, -1)}
-                              className="size-6 flex items-center justify-center font-bold text-gray-600"
-                            >
-                              -
-                            </button>
-                            <span className="font-bold text-xs w-6 text-center">{item.quantity}</span>
-                            <button
-                              onClick={() => handleUpdateItemQty(item.productId, 1)}
-                              className="size-6 flex items-center justify-center font-bold text-gray-600"
-                            >
-                              +
-                            </button>
-                          </div>
-                          <button
-                            onClick={() => handleRemoveItem(item.productId)}
-                            className="text-rose-500 text-xs font-bold px-1"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+              {toType === "store" && (
+                <div>
+                  <label className="text-[11px] font-bold text-stone-500 block mb-1">Nombre de la Tienda *</label>
+                  <select 
+                    value={toId}
+                    onChange={(e) => setToId(e.target.value)}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-bold text-stone-900 outline-none"
+                  >
+                    <option value="">Selecciona la tienda</option>
+                    {locations.stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
                 </div>
               )}
 
-              {/* NOTAS */}
+              {/* Agregar Productos */}
               <div>
-                <label className="text-[11px] font-bold text-gray-500 ml-1 mb-1 block uppercase">Notas de Despacho (Opcional)</label>
-                <input
-                  type="text"
-                  placeholder="Ej. Entregar antes de las 5pm"
-                  value={dispatchNotes}
-                  onChange={(e) => setDispatchNotes(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs outline-none focus:border-black"
-                />
+                <label className="text-[11px] font-bold text-stone-500 block mb-1">Catálogo de Productos</label>
+                <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
+                  {allProducts.map(p => (
+                    <button
+                      key={p.id}
+                      onClick={() => handleAddItem(p.id)}
+                      className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-[#FEE867] text-[12px] font-bold text-stone-800 transition-colors"
+                    >
+                      + {p.name}
+                    </button>
+                  ))}
+                </div>
               </div>
+
+              {/* Items agregados */}
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold text-stone-400 uppercase">Productos a enviar:</span>
+                {selectedItems.map(item => (
+                  <div key={item.productId} className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 border border-stone-200">
+                    <div className="flex flex-col">
+                      <span className="text-[13px] font-bold text-stone-900">{item.name}</span>
+                      <span className="text-[11px] text-stone-500">${item.unitValue.toLocaleString()} c/u</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => handleUpdateItemQty(item.productId, -1)}
+                        className="size-7 rounded-lg bg-white border border-stone-300 flex items-center justify-center font-bold"
+                      >-</button>
+                      <span className="text-sm font-black w-6 text-center">{item.quantity}</span>
+                      <button 
+                        onClick={() => handleUpdateItemQty(item.productId, 1)}
+                        className="size-7 rounded-lg bg-white border border-stone-300 flex items-center justify-center font-bold"
+                      >+</button>
+                      <button 
+                        onClick={() => handleRemoveItem(item.productId)}
+                        className="text-stone-400 hover:text-rose-600 pl-1"
+                      >
+                        <X className="size-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {selectedItems.length > 0 && (
+                <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-stone-200 flex justify-between items-center">
+                  <span className="text-[12px] font-bold text-stone-500">Valor Total Despacho:</span>
+                  <span className="text-base font-black text-stone-950">{formatCurrency(totalValueOfItems)}</span>
+                </div>
+              )}
             </div>
 
             <div className="pt-3 flex-shrink-0">
-              <Button
+              <Button 
                 onClick={handleCreateDispatchSubmit}
-                disabled={isCreatingDispatch || selectedItems.length === 0 || !toId}
-                className="w-full h-12 rounded-xl font-bold text-sm bg-black text-white"
+                disabled={isCreatingDispatch || selectedItems.length === 0}
+                className="w-full h-14 rounded-2xl font-black text-[15px] bg-[#FEE867] text-stone-950 hover:bg-[#FEE867]/90 shadow-md"
               >
-                {isCreatingDispatch ? "Despachando..." : "Confirmar y Despachar"}
+                {isCreatingDispatch ? "Creando..." : "Despachar Mercancía"}
               </Button>
             </div>
           </div>
         </DrawerContent>
       </Drawer>
+
     </div>
   );
 }
