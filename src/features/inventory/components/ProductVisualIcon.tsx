@@ -13,13 +13,15 @@ import {
 } from "lucide-react";
 
 interface ProductVisualIconProps {
+  name?: string;
+  category?: string;
   type?: string;
   imageType?: string;
   className?: string;
 }
 
-export function ProductVisualIcon({ type, imageType, className = "size-20" }: ProductVisualIconProps) {
-  const normType = (type || imageType || "").toLowerCase();
+export function ProductVisualIcon({ name, category, type, imageType, className = "size-20" }: ProductVisualIconProps) {
+  const normType = (name || type || imageType || category || "").toLowerCase();
 
   // Blanco: Mamitas
   if (normType.includes("mamita")) {

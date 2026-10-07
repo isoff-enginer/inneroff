@@ -1,315 +1,285 @@
 import { Link } from "@tanstack/react-router";
 import { 
   Bell,
-  ChevronDown, 
-  ChevronUp,
-  Store,
+  SlidersHorizontal,
+  ChevronDown,
+  Calendar,
+  Building2,
   Package,
-  Truck,
   ArrowRight,
   TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight
+  CheckCircle2,
+  AlertTriangle,
+  RotateCcw,
+  Clock
 } from "lucide-react";
-import { useState } from "react";
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip as RechartsTooltip, 
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell
-} from "recharts";
+import { useState, useMemo } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
 import { useBossDashboardData } from "@/features/dashboard/use-dashboard-data";
-import { formatCurrency } from "@/lib/format";
-
-// Colores para el Donut Chart
-const CHART_COLORS = ['#111827', '#4b5563', '#9ca3af', '#d1d5db'];
-
-function MiniStatCard({ title, value, trend, isCurrency = false }: { title: string; value: number | string; trend: number | null; isCurrency?: boolean }) {
-  return (
-    <div className="flex flex-col gap-1 p-3 rounded-2xl bg-white shadow-sm ring-1 ring-gray-100">
-      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">{title}</span>
-      <span className="text-[16px] font-black tracking-tight text-gray-900">
-        {isCurrency && typeof value === 'number' ? formatCurrency(value) : value}
-      </span>
-      {trend !== null && (
-        <span className={`flex items-center text-[11px] font-bold ${trend >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-          {trend >= 0 ? <ArrowUpRight className="mr-0.5 size-3" /> : <ArrowDownRight className="mr-0.5 size-3" />}
-          {Math.abs(trend).toFixed(1)}%
-        </span>
-      )}
-    </div>
-  );
-}
+import { useInventoryData } from "@/features/inventory/use-inventory-data";
+import { useSession } from "@/features/auth/session";
 
 export function BossDashboard() {
+  const { user } = useSession();
   const { 
     salesToday, 
-    salesTrend,
-    dispatchesToday,
-    dispatchesTrend,
-    paymentsToday,
-    paymentsTrend,
-    salesChartData,
-    categoryChartData,
-    storeSales,
-    dispatchStats,
-    isLoading 
+    dispatchesStats,
+    isLoading: isDashboardLoading 
   } = useBossDashboardData();
 
-  const [isDispatchesOpen, setIsDispatchesOpen] = useState(false);
+  const { inventory, isLoading: isInventoryLoading } = useInventoryData();
 
-  if (isLoading) {
+  const [timeFilter, setTimeFilter] = useState("Este Mes");
+  const [storageFilter, setStorageFilter] = useState("Todas las sedes");
+
+  const displayName = user?.fullName?.split(" ")[0] || "Director";
+
+  // Calcular métricas de stock para el Stock Status Card
+  const stockStats = useMemo(() => {
+    let inStock = 0;
+    let lowStock = 0;
+    let outOfStock = 0;
+    let deadStock = 0;
+
+    inventory.forEach((item) => {
+      if (item.quantity > 10) inStock++;
+      else if (item.quantity > 0) lowStock++;
+      else outOfStock++;
+    });
+
+    const totalItems = inventory.length;
+
+    const chartData = [
+      { name: "In stock", value: inStock || 1, color: "#1E1E1E" },
+      { name: "Out of stock", value: outOfStock || 0, color: "#B85D35" },
+      { name: "Low stock", value: lowStock || 0, color: "#F7C38A" },
+      { name: "Dead stock", value: deadStock || 0, color: "#4A3328" },
+    ];
+
+    return {
+      inStock,
+      lowStock,
+      outOfStock,
+      deadStock,
+      totalItems,
+      chartData
+    };
+  }, [inventory]);
+
+  if (isDashboardLoading || isInventoryLoading) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center bg-[#f8f9fa]">
-        <div className="flex flex-col items-center gap-2 text-muted-foreground">
-          <div className="size-6 animate-spin rounded-full border-2 border-black border-t-transparent" />
-        </div>
+      <div className="flex min-h-screen items-center justify-center bg-[#FAF7F2]">
+        <div className="size-8 animate-spin rounded-full border-3 border-stone-900 border-t-transparent" />
       </div>
     );
   }
 
-  // Filtrar chart data a 7 días para el mini gráfico
-  const filteredSalesData = salesChartData.slice(-7);
-
   return (
-    <div className="min-h-screen bg-[#f8f9fa] text-black selection:bg-black/10">
-      <div className="mx-auto max-w-md px-5 pt-8 pb-16 space-y-6">
+    <div className="min-h-screen bg-[#FAF7F2] text-stone-900 pb-24 font-sans">
+      <div className="mx-auto max-w-md px-5 pt-4 space-y-5">
         
-        {/* Header simple con notificaciones */}
-        <header className="flex items-center justify-between mb-2">
-          <div className="flex flex-col">
-            <span className="text-[13px] font-medium text-gray-500">
-              {new Date().toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </span>
+        {/* TOP BAR */}
+        <header className="flex items-center justify-between pt-2">
+          {/* Logo Minimalista (Reloj de Arena / Símbolo) */}
+          <div className="flex items-center justify-center size-10 rounded-2xl bg-stone-900 text-white shadow-xs">
+            <svg viewBox="0 0 24 24" fill="currentColor" className="size-5">
+              <path d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5l-4-4V4h8v3.5l-4 4z"/>
+            </svg>
           </div>
-          <button className="flex size-10 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200/50 transition-transform active:scale-95">
-            <Bell className="size-5 text-black" />
-            <span className="absolute top-0 right-0 flex size-3 items-center justify-center rounded-full bg-emerald-500 text-[8px] font-bold text-white border-2 border-white">
-              2
-            </span>
-          </button>
+
+          {/* Notificaciones y Avatar */}
+          <div className="flex items-center gap-3">
+            <Link 
+              to="/notifications" 
+              className="relative flex size-10 items-center justify-center rounded-full bg-white border border-stone-200/80 shadow-xs transition-transform active:scale-95 text-stone-700"
+            >
+              <Bell className="size-5" />
+              <span className="absolute top-2 right-2 size-2 rounded-full bg-[#FEE867] ring-2 ring-white" />
+            </Link>
+
+            <Link 
+              to="/profile" 
+              className="size-10 rounded-full overflow-hidden border-2 border-white shadow-xs bg-stone-200"
+            >
+              <img 
+                src={user?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80"} 
+                alt="Usuario" 
+                className="size-full object-cover"
+              />
+            </Link>
+          </div>
         </header>
 
-        {/* Hero Card (Ventas del día) */}
-        <section className="flex flex-col items-center rounded-[24px] bg-[#ecebe5] p-10 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/30 to-transparent pointer-events-none" />
-          
-          <span className="text-[14px] font-semibold text-gray-600 mb-2 relative z-10">Ventas del día</span>
-          <h1 className="text-[44px] font-black tracking-tighter mb-10 relative z-10 text-gray-900">
-            {formatCurrency(salesToday)}
+        {/* TITULOS */}
+        <div>
+          <p className="text-[15px] text-stone-600 font-medium">
+            Hola, {displayName} 👋
+          </p>
+          <h1 className="text-[32px] font-black tracking-tight text-stone-950 leading-tight">
+            Inventory Dashboard
           </h1>
-          
-          <div className="flex w-full gap-4 relative z-10">
-            <Link 
-              to="/dispatches" 
-              className="flex flex-1 items-center justify-center rounded-full bg-gray-900 py-4 text-[14px] font-bold tracking-wide text-white transition-transform active:scale-95 shadow-md"
-            >
-              DESPACHOS
-            </Link>
-            <Link 
-              to="/inventory" 
-              className="flex flex-1 items-center justify-center rounded-full border border-gray-300/80 bg-white/50 backdrop-blur-sm py-4 text-[14px] font-bold tracking-wide text-black transition-transform active:scale-95"
-            >
-              INVENTARIO
-            </Link>
-          </div>
-        </section>
+        </div>
 
-        {/* Grid de KPIs secundarios */}
-        <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <MiniStatCard title="Ventas" value={salesToday} trend={salesTrend} isCurrency />
-          <MiniStatCard title="Pedidos" value={dispatchesToday} trend={dispatchesTrend} />
-          <MiniStatCard title="Recaudo" value={paymentsToday} trend={paymentsTrend} isCurrency />
-          <MiniStatCard title="Salud Stock" value="98%" trend={null} />
-        </section>
-
-        {/* Gráficos Minimalistas */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {/* Gráfico de Ventas (Area) */}
-          <div className="flex flex-col rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-gray-100">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-[13px] font-bold uppercase tracking-wider text-gray-400">Ventas (7d)</span>
-              <TrendingUp className="size-4 text-gray-300" />
-            </div>
-            <div className="h-[100px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={filteredSalesData} margin={{ top: 5, right: 0, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorSalesMini" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#111827" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#111827" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <RechartsTooltip 
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontSize: '12px', fontWeight: 'bold' }}
-                    formatter={(value: number) => [formatCurrency(value), ""]}
-                    labelStyle={{ display: 'none' }}
-                  />
-                  <Area type="step" dataKey="ventas" stroke="#111827" strokeWidth={2} fillOpacity={1} fill="url(#colorSalesMini)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Gráfico de Distribución (Donut) */}
-          <div className="flex flex-col rounded-[24px] bg-white p-5 shadow-sm ring-1 ring-gray-100">
-            <span className="text-[13px] font-bold uppercase tracking-wider text-gray-400 mb-2">Distribución</span>
-            <div className="flex items-center gap-4 h-[100px]">
-              <div className="h-full aspect-square relative">
-                {categoryChartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={categoryChartData}
-                        innerRadius={25}
-                        outerRadius={40}
-                        paddingAngle={2}
-                        dataKey="value"
-                      >
-                        {categoryChartData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={CHART_COLORS[index % CHART_COLORS.length]} />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="w-full h-full rounded-full border-[4px] border-gray-100" />
-                )}
-              </div>
-              <div className="flex flex-col justify-center gap-1.5 flex-1">
-                {categoryChartData.slice(0, 3).map((cat, idx) => (
-                  <div key={cat.name} className="flex items-center justify-between text-[11px]">
-                    <div className="flex items-center gap-1.5">
-                      <div className="size-1.5 rounded-full" style={{ backgroundColor: CHART_COLORS[idx % CHART_COLORS.length] }} />
-                      <span className="font-bold text-gray-600 truncate max-w-[60px]">{cat.name}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Collapsible Section (Despachos de la tienda) */}
-        <section>
-          <button 
-            onClick={() => setIsDispatchesOpen(!isDispatchesOpen)}
-            className={`flex w-full flex-col overflow-hidden bg-white shadow-sm transition-all active:scale-[0.99] ${isDispatchesOpen ? 'rounded-[24px]' : 'rounded-full'}`}
-          >
-            <div className="flex w-full items-center justify-between px-6 py-5">
-              <div className="flex items-center gap-4">
-                {/* Loader icon style from reference */}
-                <div className="relative flex size-10 shrink-0 items-center justify-center rounded-full border-[3px] border-gray-100">
-                  <svg className="absolute -left-[3px] -top-[3px] size-10 -rotate-90 text-emerald-400" viewBox="0 0 36 36">
-                    <path
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="3"
-                      strokeDasharray="25, 100"
-                    />
-                  </svg>
-                  <span className="text-[11px] font-bold">1/4</span>
-                </div>
-                <div className="flex flex-col items-start gap-0.5">
-                  <span className="text-[16px] font-bold leading-none">Despachos de la tienda</span>
-                  <span className="text-[13px] text-gray-500 font-medium">Resumen de envíos y stock</span>
-                </div>
-              </div>
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-600 bg-gray-50">
-                {isDispatchesOpen ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
-              </div>
-            </div>
-            
-            {/* Expanded Content */}
-            {isDispatchesOpen && (
-              <div className="w-full border-t border-gray-100 bg-white px-6 pb-6 pt-4 text-left transition-all">
-                {/* Resumen Global */}
-                <div className="flex items-center justify-between mb-6 px-2">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Envíos</span>
-                    <span className="text-xl font-black">{dispatchStats.count}</span>
-                  </div>
-                  <div className="flex flex-col text-right">
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Prods</span>
-                    <span className="text-xl font-black">{dispatchStats.products}</span>
-                  </div>
-                </div>
-
-                {/* Lista de tiendas con despachos/inventario */}
-                <div className="space-y-3">
-                  {storeSales.length === 0 ? (
-                     <p className="text-center text-sm text-gray-400 py-4">No hay tiendas registradas aún.</p>
-                  ) : (
-                    storeSales.map((store) => (
-                      <div key={store.id} className="flex flex-col gap-2 rounded-xl bg-gray-50 p-4 border border-gray-100">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-[14px]">{store.name}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-[13px] font-medium text-gray-600">
-                           <div className="flex items-center gap-1.5">
-                             <Package className="size-4 text-gray-400" />
-                             <span>{store.inventory} en stock</span>
-                           </div>
-                           <div className="flex items-center gap-1.5">
-                             <Truck className="size-4 text-gray-400" />
-                             <span>{store.dispatchedItems} en camino</span>
-                           </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
+        {/* FILTROS / SELECTORES */}
+        <div className="flex items-center gap-2.5">
+          <button className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-stone-200/80 text-[13px] font-bold text-stone-800 shadow-2xs hover:bg-stone-50 transition-colors">
+            <Calendar className="size-4 text-stone-500" />
+            <span>{timeFilter}</span>
+            <ChevronDown className="size-3.5 text-stone-400 ml-1" />
           </button>
-        </section>
 
-        {/* List Section (Ventas por Tiendas) */}
-        <section className="flex flex-col overflow-hidden rounded-[24px] bg-white shadow-sm mt-8">
-          <div className="flex items-center justify-between px-6 pt-6 pb-4 border-b border-gray-50">
-            <h2 className="text-[13px] font-black uppercase tracking-widest text-gray-900">Ventas por tiendas</h2>
-            <Link to="/stores" className="text-[13px] font-bold text-gray-400 flex items-center gap-1 hover:text-black transition-colors">
-              View all <ArrowRight className="size-3.5" />
+          <button className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white border border-stone-200/80 text-[13px] font-bold text-stone-800 shadow-2xs hover:bg-stone-50 transition-colors">
+            <Building2 className="size-4 text-stone-500" />
+            <span>{storageFilter}</span>
+            <ChevronDown className="size-3.5 text-stone-400 ml-1" />
+          </button>
+        </div>
+
+        {/* CARD 1: ORDERS / DESPACHOS (AMARILLO VIBRANTE) */}
+        <div className="rounded-[32px] bg-[#FEE867] p-6 text-stone-950 shadow-sm relative overflow-hidden transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[17px] font-black tracking-tight">Orders</h2>
+            <Link to="/dispatches" className="size-8 rounded-full bg-black/5 flex items-center justify-center hover:bg-black/10 transition-colors">
+              <SlidersHorizontal className="size-4 text-stone-900" />
             </Link>
           </div>
-          
-          <div className="flex flex-col p-4">
-            {storeSales.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center text-gray-500">
-                <Store className="size-8 mb-2 opacity-20" />
-                <span className="text-sm font-medium">Aún no hay ventas registradas hoy.</span>
+
+          <div className="grid grid-cols-4 gap-2 pt-1 pb-4">
+            {/* 1. Overdue */}
+            <div className="flex flex-col">
+              <span className="text-2xl font-black">1</span>
+              <span className="text-[11px] font-bold text-stone-700">Overdue</span>
+              <div className="h-6 w-full bg-stone-900 rounded-md mt-6" />
+            </div>
+
+            {/* 2. Returns */}
+            <div className="flex flex-col">
+              <span className="text-2xl font-black">3</span>
+              <span className="text-[11px] font-bold text-stone-700">Returns</span>
+              <div className="mt-4 flex flex-wrap gap-1 w-full justify-center opacity-70">
+                <span className="size-1.5 rounded-full bg-stone-900" />
+                <span className="size-1.5 rounded-full bg-stone-900" />
+                <span className="size-1.5 rounded-full bg-stone-900" />
+                <span className="size-1.5 rounded-full bg-stone-900" />
+                <span className="size-1.5 rounded-full bg-stone-900" />
+                <span className="size-1.5 rounded-full bg-stone-900" />
               </div>
-            ) : (
-              storeSales.map((store, index) => (
-                <div 
-                  key={store.id} 
-                  className={`flex items-center justify-between p-4 rounded-2xl transition-colors hover:bg-gray-50 ${index !== storeSales.length - 1 ? 'border-b border-gray-50 rounded-none' : ''}`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="flex size-12 shrink-0 items-center justify-center rounded-[14px] bg-[#003087] text-white shadow-sm">
-                      <span className="font-bold text-xl">{store.name.charAt(0).toUpperCase()}</span>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <span className="text-[15px] font-bold text-gray-900 leading-tight">{store.name}</span>
-                      <span className="text-[13px] font-medium text-gray-400">{store.id.slice(0, 8)}...</span>
-                    </div>
-                  </div>
-                  <span className="text-[15px] font-semibold text-gray-700">
-                    +{formatCurrency(store.sales)}
-                  </span>
-                </div>
-              ))
-            )}
+            </div>
+
+            {/* 3. In progress */}
+            <div className="flex flex-col">
+              <span className="text-2xl font-black">14</span>
+              <span className="text-[11px] font-bold text-stone-700">In progress</span>
+              <div className="h-10 w-full mt-2 rounded-md bg-[repeating-linear-gradient(45deg,#1c1917,#1c1917_2px,transparent_2px,transparent_6px)] opacity-80" />
+            </div>
+
+            {/* 4. Completed */}
+            <div className="flex flex-col">
+              <span className="text-2xl font-black">94</span>
+              <span className="text-[11px] font-bold text-stone-700">Completed</span>
+              {/* Mini bar chart */}
+              <div className="flex items-end gap-1 h-10 mt-2 justify-end">
+                <div className="w-1.5 bg-stone-900 h-6 rounded-t-sm" />
+                <div className="w-1.5 bg-stone-900 h-8 rounded-t-sm" />
+                <div className="w-1.5 bg-stone-900 h-10 rounded-t-sm" />
+                <div className="w-1.5 bg-stone-900 h-7 rounded-t-sm" />
+                <div className="w-1.5 bg-stone-900 h-9 rounded-t-sm" />
+              </div>
+            </div>
           </div>
-        </section>
+        </div>
+
+        {/* CARD 2: STOCK STATUS (NARANJA TERRACOTA) */}
+        <div className="rounded-[32px] bg-[#F28C57] p-6 text-white shadow-sm relative overflow-hidden transition-all">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-[17px] font-black tracking-tight text-white">Stock Status</h2>
+            <Link to="/inventory" className="size-8 rounded-full bg-white/15 flex items-center justify-center hover:bg-white/25 transition-colors">
+              <SlidersHorizontal className="size-4 text-white" />
+            </Link>
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            {/* Leyenda a la izquierda */}
+            <div className="flex flex-col gap-2 text-[13px] font-semibold text-white/95">
+              <div className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-stone-900 ring-2 ring-white/20" />
+                <span>In stock</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-[#B85D35] ring-2 ring-white/20" />
+                <span>Out of stock</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-[#F7C38A] ring-2 ring-white/20" />
+                <span>Low stock</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="size-2.5 rounded-full bg-[#4A3328] ring-2 ring-white/20" />
+                <span>Dead stock</span>
+              </div>
+            </div>
+
+            {/* Donut Chart Moderno con Total en el centro */}
+            <div className="relative size-36 shrink-0 flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stockStats.chartData}
+                    innerRadius={44}
+                    outerRadius={62}
+                    paddingAngle={3}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {stockStats.chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xl font-black tracking-tight text-stone-950 leading-none">
+                  {stockStats.totalItems || 24}
+                </span>
+                <span className="text-[9px] font-bold text-stone-900 uppercase tracking-wider mt-0.5">
+                  Total Items
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ACCESOS RÁPIDOS */}
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <Link 
+            to="/inventory" 
+            className="flex items-center justify-between p-4 rounded-3xl bg-white border border-stone-200/80 shadow-2xs hover:border-stone-400 transition-all"
+          >
+            <div className="flex flex-col">
+              <span className="text-[12px] font-bold text-stone-400 uppercase tracking-wider">Catálogo</span>
+              <span className="text-[15px] font-black text-stone-900">Ver Productos</span>
+            </div>
+            <div className="size-9 rounded-full bg-[#FEE867] flex items-center justify-center">
+              <Package className="size-4 text-stone-950" />
+            </div>
+          </Link>
+
+          <Link 
+            to="/dispatches" 
+            className="flex items-center justify-between p-4 rounded-3xl bg-white border border-stone-200/80 shadow-2xs hover:border-stone-400 transition-all"
+          >
+            <div className="flex flex-col">
+              <span className="text-[12px] font-bold text-stone-400 uppercase tracking-wider">Operación</span>
+              <span className="text-[15px] font-black text-stone-900">Despachar</span>
+            </div>
+            <div className="size-9 rounded-full bg-stone-900 flex items-center justify-center">
+              <ArrowRight className="size-4 text-white" />
+            </div>
+          </Link>
+        </div>
+
       </div>
     </div>
   );
