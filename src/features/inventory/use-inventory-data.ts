@@ -231,6 +231,7 @@ export function useInventoryData() {
         movement_type: "adjustment",
         quantity: quantity,
         unit_value: unitValue,
+        total_value: quantity * unitValue,
         notes: `Ajuste manual (${type === "in" ? "Entrada" : "Salida"})`,
         created_by: user?.id,
       };
@@ -249,7 +250,10 @@ export function useInventoryData() {
         movementPayload[type === "in" ? "to_location_type" : "from_location_type"] = "factory";
       }
 
-      await supabase.from("inventory_movements").insert(movementPayload as any);
+      const { error: movError } = await supabase.from("inventory_movements").insert(movementPayload as any);
+      if (movError) {
+        console.warn("inventory_movements insert warning:", movError);
+      }
 
       const newQuantity = type === "in" ? currentQuantity + quantity : Math.max(0, currentQuantity - quantity);
       
