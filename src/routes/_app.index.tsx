@@ -23,6 +23,11 @@ export const Route = createFileRoute("/_app/")({
 export function DashboardRouter() {
   const { role, user } = useSession();
 
+  // Si es Boss o Boss Admin, siempre mostrar BossDashboard completo con el switcher de vistas
+  if (role === "boss" || role === "boss_admin") {
+    return <BossDashboard />;
+  }
+
   // Si tiene asignada una tienda
   if (user?.storeId) {
     return <StoreDashboard />;
@@ -43,7 +48,7 @@ export function DashboardRouter() {
     return <OperationsAdminDashboard />;
   }
 
-  // Boss / Boss Admin o por defecto
+  // Por defecto
   return <BossDashboard />;
 }
 

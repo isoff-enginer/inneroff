@@ -49,6 +49,11 @@ export function BossDashboard() {
   const { inventory, allProducts, isLoading: isInventoryLoading } = useInventoryData();
   const { dispatches, createDispatch, isCreatingDispatch, locations } = useDispatches();
 
+  // Safely extract typed location arrays from locations list
+  const stores = useMemo(() => Array.isArray(locations) ? locations.filter(l => l.type === "store") : [], [locations]);
+  const warehouses = useMemo(() => Array.isArray(locations) ? locations.filter(l => l.type === "warehouse") : [], [locations]);
+  const factories = useMemo(() => Array.isArray(locations) ? locations.filter(l => l.type === "factory") : [], [locations]);
+
   // Perspective mode: Boss, Bodega, or Fábrica
   const [perspective, setPerspective] = useState<ViewPerspective>("boss");
   const [timeFilter, setTimeFilter] = useState("Hoy");
@@ -185,15 +190,15 @@ export function BossDashboard() {
       let toLocId = "";
 
       if (dispatchFromType === "warehouse") {
-        fromLocId = locations.warehouses[0]?.id || "";
+        fromLocId = warehouses[0]?.id || "";
       } else {
-        fromLocId = locations.factories[0]?.id || "";
+        fromLocId = factories[0]?.id || "";
       }
 
       if (dispatchToType === "store") {
-        toLocId = selectedTargetStore || locations.stores[0]?.id || "";
+        toLocId = selectedTargetStore || stores[0]?.id || "";
       } else {
-        toLocId = locations.warehouses[0]?.id || "";
+        toLocId = warehouses[0]?.id || "";
       }
 
       await createDispatch({
@@ -696,7 +701,7 @@ export function BossDashboard() {
                     className="w-full bg-white border border-stone-200 rounded-2xl p-3 text-[14px] font-bold text-stone-900 outline-none"
                   >
                     <option value="">Selecciona la tienda destino</option>
-                    {locations.stores.map(s => (
+                    {stores.map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
@@ -777,7 +782,7 @@ export function BossDashboard() {
                   className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-bold text-stone-900 outline-none"
                 >
                   <option value="">Selecciona tienda</option>
-                  {locations.stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
               </div>
 

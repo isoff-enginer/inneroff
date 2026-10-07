@@ -41,6 +41,11 @@ function DispatchesPage() {
   const { dispatches, locations, isLoading, createDispatch, isCreatingDispatch, receiveDispatch, isReceivingDispatch } = useDispatches();
   const { allProducts } = useInventoryData();
 
+  // Safely extract typed location arrays
+  const stores = useMemo(() => Array.isArray(locations) ? locations.filter(l => l.type === "store") : [], [locations]);
+  const warehouses = useMemo(() => Array.isArray(locations) ? locations.filter(l => l.type === "warehouse") : [], [locations]);
+  const factories = useMemo(() => Array.isArray(locations) ? locations.filter(l => l.type === "factory") : [], [locations]);
+
   const [query, setQuery] = useState("");
   const [filterTab, setFilterTab] = useState<"todos" | "por_recibir" | "despachados" | "recibidos">("todos");
 
@@ -123,8 +128,8 @@ function DispatchesPage() {
   };
 
   const handleCreateDispatchSubmit = async () => {
-    const effectiveFromId = fromId || (fromType === "warehouse" ? locations.warehouses[0]?.id : locations.factories[0]?.id) || "";
-    const effectiveToId = toId || (toType === "store" ? locations.stores[0]?.id : locations.warehouses[0]?.id) || "";
+    const effectiveFromId = fromId || (fromType === "warehouse" ? warehouses[0]?.id : factories[0]?.id) || "";
+    const effectiveToId = toId || (toType === "store" ? stores[0]?.id : warehouses[0]?.id) || "";
 
     if (!effectiveFromId || !effectiveToId) {
       toast.error("Selecciona el origen y el destino del despacho");
@@ -381,7 +386,7 @@ function DispatchesPage() {
                     className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-bold text-stone-900 outline-none"
                   >
                     <option value="">Selecciona la tienda</option>
-                    {locations.stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                    {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
                 </div>
               )}
