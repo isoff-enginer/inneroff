@@ -62,7 +62,6 @@ export const NAV_SECTIONS: NavSection[] = [
         label: "Administración",
         icon: Shield,
         roles: ["boss", "boss_admin", "operations_admin"],
-        placeholder: true,
       },
       { to: "/settings", label: "Configuración", icon: Settings },
     ],

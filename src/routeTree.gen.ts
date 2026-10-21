@@ -19,6 +19,7 @@ import { Route as AppMessagesRouteImport } from './routes/_app.messages'
 import { Route as AppNotificationsRouteImport } from './routes/_app.notifications'
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
 import { Route as AppSalesRouteImport } from './routes/_app.sales'
+import { Route as AppAdminRouteImport } from './routes/_app.admin'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -69,6 +70,11 @@ const AppSalesRoute = AppSalesRouteImport.update({
   path: '/sales',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminRoute = AppAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof AppNotificationsRoute
   '/profile': typeof AppProfileRoute
   '/sales': typeof AppSalesRoute
+  '/admin': typeof AppAdminRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -90,6 +97,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof AppNotificationsRoute
   '/profile': typeof AppProfileRoute
   '/sales': typeof AppSalesRoute
+  '/admin': typeof AppAdminRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -103,6 +111,7 @@ export interface FileRoutesById {
   '/_app/notifications': typeof AppNotificationsRoute
   '/_app/profile': typeof AppProfileRoute
   '/_app/sales': typeof AppSalesRoute
+  '/_app/admin': typeof AppAdminRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -117,6 +126,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/sales'
+    | '/admin'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -127,6 +137,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/sales'
+    | '/admin'
     | '/'
   id:
     | '__root__'
@@ -139,6 +150,7 @@ export interface FileRouteTypes {
     | '/_app/notifications'
     | '/_app/profile'
     | '/_app/sales'
+    | '/_app/admin'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
@@ -219,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSalesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin': {
+      id: '/_app/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AppAdminRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -230,6 +249,7 @@ interface AppRouteChildren {
   AppNotificationsRoute: typeof AppNotificationsRoute
   AppProfileRoute: typeof AppProfileRoute
   AppSalesRoute: typeof AppSalesRoute
+  AppAdminRoute: typeof AppAdminRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -241,6 +261,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppNotificationsRoute: AppNotificationsRoute,
   AppProfileRoute: AppProfileRoute,
   AppSalesRoute: AppSalesRoute,
+  AppAdminRoute: AppAdminRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

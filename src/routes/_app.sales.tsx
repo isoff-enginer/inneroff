@@ -10,11 +10,12 @@ import {
   Store,
   CheckCircle2,
   Clock,
-  ArrowUpRight
+  ArrowUpRight,
+  Wallet
 } from "lucide-react";
 
 import { formatCurrency } from "@/lib/format";
-import { MOCK_SALES } from "@/features/sales/mock-data";
+import { useSalesData } from "@/features/sales/use-sales-data";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -30,58 +31,72 @@ export const Route = createFileRoute("/_app/sales")({
 
 function SalesPage() {
   const navigate = useNavigate();
+  const { 
+    payments, 
+    stores, 
+    categories, 
+    totalRecaudado, 
+    totalFaltante, 
+    isLoading, 
+    createPayment, 
+    isCreatingPayment 
+  } = useSalesData();
+
   const [query, setQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState<"todos" | "Verde" | "Blanco">("todos");
+  const [filterCategory, setFilterCategory] = useState<string>("todos");
   
-  // Recaudo Drawer
+  // Recaudo Drawer State
   const [isNewRecaudoOpen, setIsNewRecaudoOpen] = useState(false);
-  const [storeName, setStoreName] = useState("Tienda Centro");
+  const [selectedStoreId, setSelectedStoreId] = useState("");
+  const [selectedCategoryId, setSelectedCategoryId] = useState("");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState<"Verde" | "Blanco">("Verde");
+  const [notes, setNotes] = useState("");
 
-  const [salesList, setSalesList] = useState(MOCK_SALES);
-
-  const rows = useMemo(() => {
-    return salesList.filter((row) => {
-      const matchesText = `${row.store} ${row.operator} ${row.category}`
+  const filteredPayments = useMemo(() => {
+    return payments.filter((row) => {
+      const matchesText = `${row.storeName} ${row.operatorName} ${row.categoryName} ${row.paymentNumber}`
         .toLowerCase()
         .includes(query.trim().toLowerCase());
       if (!matchesText) return false;
-      if (filterCategory !== "todos" && !row.category.toLowerCase().includes(filterCategory.toLowerCase())) {
+      if (filterCategory !== "todos" && row.categoryId !== filterCategory && row.categoryName.toLowerCase() !== filterCategory.toLowerCase()) {
         return false;
       }
       return true;
     });
-  }, [salesList, query, filterCategory]);
+  }, [payments, query, filterCategory]);
 
-  const totalRecaudado = useMemo(() => {
-    return salesList
-      .filter((r) => r.status === "confirmed")
-      .reduce((sum, r) => sum + r.amount, 0);
-  }, [salesList]);
+  const handleRegisterRecaudo = async () => {
+    const effectiveStoreId = selectedStoreId || stores[0]?.id;
+    const effectiveCategoryId = selectedCategoryId || categories[0]?.id;
 
-  const totalFaltante = 1420000; // Total pendiente de cobro de despachos
-
-  const handleRegisterRecaudo = () => {
+    if (!effectiveStoreId) {
+      toast.error("Debes seleccionar una tienda");
+      return;
+    }
+    if (!effectiveCategoryId) {
+      toast.error("Debes seleccionar una categoría");
+      return;
+    }
     if (!amount || Number(amount) <= 0) {
       toast.error("Ingresa un monto válido");
       return;
     }
 
-    const newRecaudo = {
-      id: `s-${Date.now()}`,
-      date: "Hoy",
-      store: storeName,
-      operator: "Operador",
-      category: `Categoría ${category}`,
-      amount: Number(amount),
-      status: "confirmed" as const,
-    };
+    try {
+      await createPayment({
+        storeId: effectiveStoreId,
+        categoryId: effectiveCategoryId,
+        amount: Number(amount),
+        notes: notes.trim() || undefined,
+      });
 
-    setSalesList(prev => [newRecaudo, ...prev]);
-    toast.success(`Recaudo de ${formatCurrency(Number(amount))} registrado exitosamente`);
-    setIsNewRecaudoOpen(false);
-    setAmount("");
+      toast.success(`Recaudo de ${formatCurrency(Number(amount))} registrado con éxito`);
+      setIsNewRecaudoOpen(false);
+      setAmount("");
+      setNotes("");
+    } catch (err: any) {
+      toast.error(err.message || "Error al registrar recaudo");
+    }
   };
 
   return (
@@ -104,6 +119,7 @@ function SalesPage() {
           <button 
             onClick={() => setIsNewRecaudoOpen(true)}
             className="flex size-10 items-center justify-center rounded-full bg-[#FEE867] border border-stone-900/10 shadow-2xs text-stone-950 active:scale-95 transition-transform"
+            title="Nuevo Recaudo"
           >
             <Plus className="size-5 stroke-[2.5]" />
           </button>
@@ -145,7 +161,7 @@ function SalesPage() {
             <input 
               type="text" 
               className="block w-full pl-4 pr-10 py-3 rounded-2xl bg-white border border-stone-200/80 text-[14px] text-stone-900 placeholder:text-stone-400 outline-none focus:ring-2 focus:ring-stone-900 shadow-2xs"
-              placeholder="Buscar tienda, operador..."
+              placeholder="Buscar tienda, operador, #..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -157,77 +173,113 @@ function SalesPage() {
           </div>
         </div>
 
-        {/* CATEGORY FILTER PILLS */}
+        {/* DYNAMIC CATEGORY FILTER PILLS */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <button 
             onClick={() => setFilterCategory("todos")}
             className={`whitespace-nowrap px-4 py-2 rounded-2xl text-[13px] font-bold transition-colors ${filterCategory === "todos" ? 'bg-[#FEE867] text-stone-950 shadow-2xs' : 'bg-white border border-stone-200/80 text-stone-600'}`}
           >
-            Todos ({salesList.length})
+            Todos ({payments.length})
           </button>
-          <button 
-            onClick={() => setFilterCategory("Verde")}
-            className={`whitespace-nowrap px-4 py-2 rounded-2xl text-[13px] font-bold transition-colors ${filterCategory === "Verde" ? 'bg-[#FEE867] text-stone-950 shadow-2xs' : 'bg-white border border-stone-200/80 text-stone-600'}`}
-          >
-            Categoría Verde
-          </button>
-          <button 
-            onClick={() => setFilterCategory("Blanco")}
-            className={`whitespace-nowrap px-4 py-2 rounded-2xl text-[13px] font-bold transition-colors ${filterCategory === "Blanco" ? 'bg-[#FEE867] text-stone-950 shadow-2xs' : 'bg-white border border-stone-200/80 text-stone-600'}`}
-          >
-            Categoría Blanco
-          </button>
-        </div>
-
-        {/* SALES LIST */}
-        <div className="space-y-2.5">
-          {rows.map((r) => (
-            <div 
-              key={r.id}
-              className="p-4 rounded-[28px] bg-white border border-stone-200/80 shadow-2xs flex items-center justify-between"
+          {categories.map((cat) => (
+            <button 
+              key={cat.id}
+              onClick={() => setFilterCategory(cat.id)}
+              className={`whitespace-nowrap px-4 py-2 rounded-2xl text-[13px] font-bold transition-colors ${filterCategory === cat.id ? 'bg-[#FEE867] text-stone-950 shadow-2xs' : 'bg-white border border-stone-200/80 text-stone-600'}`}
             >
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[14px] font-black text-stone-900">{r.store}</span>
-                <div className="flex items-center gap-2 text-[12px] text-stone-500 font-semibold">
-                  <span>{r.category}</span>
-                  <span>•</span>
-                  <span>{r.date}</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-end gap-1">
-                <span className="text-[16px] font-black text-stone-950">
-                  {formatCurrency(r.amount)}
-                </span>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-                  Confirmado
-                </span>
-              </div>
-            </div>
+              {cat.name}
+            </button>
           ))}
         </div>
 
+        {/* SALES / PAYMENTS LIST */}
+        {isLoading ? (
+          <div className="space-y-2.5">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-20 bg-white/60 rounded-[28px] animate-pulse border border-stone-200/60" />
+            ))}
+          </div>
+        ) : filteredPayments.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 text-stone-400">
+            <Wallet className="size-12 mb-3 opacity-30" />
+            <p className="text-[15px] font-semibold">Sin recaudos registrados todavía</p>
+            <p className="text-[12px] text-stone-400 mt-1">Registra tu primer recaudo con el botón superior</p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {filteredPayments.map((r) => (
+              <div 
+                key={r.id}
+                className="p-4 rounded-[28px] bg-white border border-stone-200/80 shadow-2xs flex items-center justify-between"
+              >
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[14px] font-black text-stone-900">{r.storeName}</span>
+                  <div className="flex items-center gap-2 text-[12px] text-stone-500 font-semibold">
+                    <span>{r.categoryName}</span>
+                    <span>•</span>
+                    <span>{r.date}</span>
+                    {r.operatorName && (
+                      <>
+                        <span>•</span>
+                        <span className="text-stone-400">{r.operatorName}</span>
+                      </>
+                    )}
+                  </div>
+                  {r.notes && (
+                    <span className="text-[11px] text-stone-400 italic">{r.notes}</span>
+                  )}
+                </div>
+
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-[16px] font-black text-stone-950">
+                    {formatCurrency(r.amount)}
+                  </span>
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${
+                    r.status === "confirmed" 
+                      ? "bg-emerald-100 text-emerald-800" 
+                      : "bg-rose-100 text-rose-800"
+                  }`}>
+                    {r.status === "confirmed" ? "Confirmado" : "Anulado"}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
       </div>
 
-      {/* DRAWER: NUEVO RECAUDO */}
+      {/* DRAWER: NUEVO RECAUDO REAL A SUPABASE */}
       <Drawer open={isNewRecaudoOpen} onOpenChange={setIsNewRecaudoOpen}>
         <DrawerContent className="bg-white border-t-0 px-5 pb-8">
           <div className="flex flex-col">
             <div className="py-3 border-b border-stone-100 mb-3">
-              <h2 className="text-xl font-black text-stone-900">Registrar Pago / Recaudo</h2>
+              <h2 className="text-xl font-black text-stone-900">Registrar Recaudo</h2>
+              <p className="text-xs text-stone-400">Guarda el cobro directamente en la base de datos</p>
             </div>
             
             <div className="space-y-3">
               <div>
-                <label className="text-[12px] font-bold text-stone-500 block mb-1">Tienda</label>
+                <label className="text-[12px] font-bold text-stone-500 block mb-1">Tienda *</label>
                 <select 
-                  value={storeName} 
-                  onChange={(e) => setStoreName(e.target.value)}
+                  value={selectedStoreId} 
+                  onChange={(e) => setSelectedStoreId(e.target.value)}
                   className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-bold text-stone-900 outline-none"
                 >
-                  <option value="Tienda Centro">Tienda Centro</option>
-                  <option value="Tienda Norte">Tienda Norte</option>
-                  <option value="Tienda Sur">Tienda Sur</option>
+                  <option value="">Selecciona la tienda</option>
+                  {stores.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[12px] font-bold text-stone-500 block mb-1">Categoría *</label>
+                <select 
+                  value={selectedCategoryId} 
+                  onChange={(e) => setSelectedCategoryId(e.target.value)}
+                  className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-bold text-stone-900 outline-none"
+                >
+                  <option value="">Selecciona la categoría</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
               </div>
 
@@ -237,34 +289,28 @@ function SalesPage() {
                   type="number" 
                   value={amount} 
                   onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Ej. 1240000"
+                  placeholder="Ej. 120000"
                   className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[15px] font-bold text-stone-900 outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-[12px] font-bold text-stone-500 block mb-1">Categoría</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button 
-                    onClick={() => setCategory("Verde")}
-                    className={`p-3 rounded-xl text-[13px] font-bold border transition-colors ${category === "Verde" ? "bg-[#FEE867] border-stone-900 text-stone-950" : "bg-stone-50 border-stone-200 text-stone-600"}`}
-                  >
-                    Categoría Verde
-                  </button>
-                  <button 
-                    onClick={() => setCategory("Blanco")}
-                    className={`p-3 rounded-xl text-[13px] font-bold border transition-colors ${category === "Blanco" ? "bg-[#FEE867] border-stone-900 text-stone-950" : "bg-stone-50 border-stone-200 text-stone-600"}`}
-                  >
-                    Categoría Blanco
-                  </button>
-                </div>
+                <label className="text-[12px] font-bold text-stone-500 block mb-1">Notas / Referencia (Opcional)</label>
+                <input 
+                  type="text" 
+                  value={notes} 
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Ej. Pago en efectivo turno tarde"
+                  className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] outline-none"
+                />
               </div>
 
               <Button 
                 onClick={handleRegisterRecaudo}
+                disabled={isCreatingPayment}
                 className="w-full h-14 rounded-2xl font-black text-[15px] bg-[#FEE867] text-stone-950 hover:bg-[#FEE867]/90 mt-2 shadow-md"
               >
-                Guardar Recaudo
+                {isCreatingPayment ? "Guardando en Supabase..." : "Guardar Recaudo"}
               </Button>
             </div>
           </div>

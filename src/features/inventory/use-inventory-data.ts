@@ -8,6 +8,8 @@ export interface InventoryProduct {
   name: string;
   category: string;
   categoryId?: string;
+  subcategoryId?: string | null;
+  subcategoryName?: string | null;
   quantity: number;
   status: "disponible" | "poco_stock" | "agotado";
   locationType: string;
@@ -31,7 +33,25 @@ export interface ProductCategory {
   id: string;
   name: string;
   description?: string;
+  parentId?: string | null;
+  parent_id?: string | null;
   productCount?: number;
+  subcategories?: ProductCategory[];
+}
+
+export interface CatalogProduct {
+  id: string;
+  name: string;
+  categoryId: string;
+  categoryName: string;
+  subcategoryId?: string | null;
+  subcategoryName?: string | null;
+  unitValue: number;
+  costValue: number;
+  sku?: string | null;
+  unitName: string;
+  description?: string | null;
+  isActive: boolean;
 }
 
 const STOCK_THRESHOLD = 10;
@@ -40,6 +60,7 @@ export function useInventoryData() {
   const { user, role } = useSession();
   const queryClient = useQueryClient();
 
+  // 1. Balances de Inventario
   const inventoryQuery = useQuery({
     queryKey: ["inventory_balances", user?.id, role],
     queryFn: async () => {
@@ -94,6 +115,7 @@ export function useInventoryData() {
           name: row.products?.name || "Desconocido",
           category: row.products?.product_categories?.name || "General",
           categoryId: row.products?.category_id,
+          subcategoryId: row.products?.subcategory_id || null,
           quantity: qty,
           status,
           locationType: row.location_type,
@@ -111,40 +133,87 @@ export function useInventoryData() {
     enabled: !!user,
   });
 
+  // 2. Categorías y Subcategorías
   const categoriesQuery = useQuery({
-    queryKey: ["product_categories"],
+    queryKey: ["product_categories_hierarchical"],
     queryFn: async () => {
-      const { data: cats, error: catsError } = await supabase
+      // Intento leer con parent_id
+      let cats: any[] = [];
+      const { data: rawCats, error: catsError } = await supabase
         .from("product_categories")
-        .select("id, name, description")
+        .select("id, name, description, is_active, parent_id")
         .eq("is_active", true)
         .order("name");
-      if (catsError) throw catsError;
 
-      const { data: prods, error: prodsError } = await supabase
+      if (catsError) {
+        // Fallback si la columna parent_id no existe aún en la base de datos
+        const { data: fallbackCats, error: fbError } = await supabase
+          .from("product_categories")
+          .select("id, name, description, is_active")
+          .eq("is_active", true)
+          .order("name");
+        if (fbError) throw fbError;
+        cats = (fallbackCats || []).map(c => ({ ...c, parent_id: null }));
+      } else {
+        cats = rawCats || [];
+      }
+
+      // Conteo de productos asociados
+      const { data: prods } = await supabase
         .from("products")
-        .select("category_id")
+        .select("id, category_id, is_active")
         .eq("is_active", true);
-      if (prodsError) throw prodsError;
 
-      const mapped = (cats || []).map(c => {
+      const allCats: ProductCategory[] = cats.map(c => {
         const count = (prods || []).filter(p => p.category_id === c.id).length;
-        return { ...c, productCount: count } as ProductCategory;
+        return {
+          id: c.id,
+          name: c.name,
+          description: c.description || "",
+          parentId: c.parent_id || null,
+          parent_id: c.parent_id || null,
+          productCount: count,
+          subcategories: [],
+        };
       });
 
-      return mapped;
+      // Agrupar en categorías principales y sus subcategorías
+      const mainCategories: ProductCategory[] = [];
+      const subcategories: ProductCategory[] = [];
+
+      allCats.forEach(c => {
+        if (!c.parentId) {
+          mainCategories.push(c);
+        } else {
+          subcategories.push(c);
+        }
+      });
+
+      // Asignar subcategorías a su categoría padre
+      mainCategories.forEach(main => {
+        main.subcategories = subcategories.filter(sub => sub.parentId === main.id);
+      });
+
+      return {
+        all: allCats,
+        main: mainCategories,
+        subs: subcategories,
+      };
     }
   });
 
+  // 3. Catálogo Completo de Productos
   const allProductsQuery = useQuery({
     queryKey: ["all_products_catalog"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let data: any[] = [];
+      const { data: prodsData, error: prodsError } = await supabase
         .from("products")
         .select(`
           id,
           name,
           category_id,
+          subcategory_id,
           unit_value,
           cost_value,
           sku,
@@ -156,8 +225,31 @@ export function useInventoryData() {
         .eq("is_active", true)
         .order("name");
 
-      if (error) throw error;
-      return data || [];
+      if (prodsError) {
+        // Fallback si subcategory_id no existe
+        const { data: fbData, error: fbErr } = await supabase
+          .from("products")
+          .select(`
+            id,
+            name,
+            category_id,
+            unit_value,
+            cost_value,
+            sku,
+            unit_name,
+            description,
+            is_active,
+            product_categories (id, name)
+          `)
+          .eq("is_active", true)
+          .order("name");
+        if (fbErr) throw fbErr;
+        data = (fbData || []).map(p => ({ ...p, subcategory_id: null }));
+      } else {
+        data = prodsData || [];
+      }
+
+      return data;
     },
     enabled: !!user,
   });
@@ -201,6 +293,7 @@ export function useInventoryData() {
       enabled: !!productId && !!locationId,
     });
 
+  // Movimiento manual de inventario (Entrada / Salida)
   const addMovementMutation = useMutation({
     mutationFn: async ({
       productId,
@@ -250,10 +343,7 @@ export function useInventoryData() {
         movementPayload[type === "in" ? "to_location_type" : "from_location_type"] = "factory";
       }
 
-      const { error: movError } = await supabase.from("inventory_movements").insert(movementPayload as any);
-      if (movError) {
-        console.warn("inventory_movements insert warning:", movError);
-      }
+      await supabase.from("inventory_movements").insert(movementPayload as any);
 
       const newQuantity = type === "in" ? currentQuantity + quantity : Math.max(0, currentQuantity - quantity);
       
@@ -272,55 +362,143 @@ export function useInventoryData() {
     },
   });
 
+  // Mutación: Crear Categoría o Subcategoría
   const createCategoryMutation = useMutation({
-    mutationFn: async ({ name, description }: { name: string, description?: string }) => {
-      const { error } = await supabase.from("product_categories").insert({
-        name,
-        description: description || null,
+    mutationFn: async ({ name, description, parentId }: { name: string; description?: string; parentId?: string | null }) => {
+      const payload: any = {
+        name: name.trim(),
+        description: description?.trim() || null,
         is_active: true
-      });
+      };
+      if (parentId) {
+        payload.parent_id = parentId;
+      }
+
+      let resError: any = null;
+      try {
+        const { error } = await supabase.from("product_categories").insert(payload);
+        resError = error;
+      } catch (err: any) {
+        resError = err;
+      }
+
+      if (resError && payload.parent_id && resError.message?.includes("parent_id")) {
+        delete payload.parent_id;
+        const { error } = await supabase.from("product_categories").insert(payload);
+        if (error) throw error;
+      } else if (resError) {
+        throw resError;
+      }
+
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product_categories_hierarchical"] });
+      queryClient.invalidateQueries({ queryKey: ["product_categories"] });
+      queryClient.invalidateQueries({ queryKey: ["sales_categories_list"] });
+    }
+  });
+
+  // Mutación: Actualizar Categoría o Subcategoría
+  const updateCategoryMutation = useMutation({
+    mutationFn: async ({ id, name, description, parentId }: { id: string; name?: string; description?: string; parentId?: string | null }) => {
+      const payload: any = {
+        updated_at: new Date().toISOString()
+      };
+      if (name !== undefined) payload.name = name.trim();
+      if (description !== undefined) payload.description = description.trim() || null;
+      if (parentId !== undefined) payload.parent_id = parentId;
+
+      const { error } = await supabase.from("product_categories").update(payload).eq("id", id);
       if (error) throw error;
       return true;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product_categories_hierarchical"] });
       queryClient.invalidateQueries({ queryKey: ["product_categories"] });
+      queryClient.invalidateQueries({ queryKey: ["sales_categories_list"] });
     }
   });
 
+  // Mutación: Eliminar (Desactivar) Categoría
+  const deleteCategoryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("product_categories")
+        .update({ is_active: false })
+        .eq("id", id);
+      if (error) throw error;
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["product_categories_hierarchical"] });
+      queryClient.invalidateQueries({ queryKey: ["product_categories"] });
+      queryClient.invalidateQueries({ queryKey: ["sales_categories_list"] });
+    }
+  });
+
+  // Mutación: Crear Producto
   const createProductMutation = useMutation({
     mutationFn: async (data: {
       name: string;
       category_id: string;
+      subcategory_id?: string | null;
       unit_value: number;
       cost_value?: number;
       unit_name?: string;
       sku?: string;
       description?: string;
     }) => {
-      const { data: newProd, error } = await supabase.from("products").insert({
-        name: data.name,
+      const payload: any = {
+        name: data.name.trim(),
         category_id: data.category_id,
         unit_value: data.unit_value,
         cost_value: data.cost_value || 0,
         unit_name: data.unit_name || "unidades",
-        sku: data.sku || null,
-        description: data.description || null,
+        sku: data.sku?.trim() || null,
+        description: data.description?.trim() || null,
         is_active: true,
-      }).select("id").single();
+      };
 
-      if (error) throw error;
+      if (data.subcategory_id) {
+        payload.subcategory_id = data.subcategory_id;
+      }
 
-      // Also create an initial zero balance for the user's location if applicable
+      let newProdId = "";
+      try {
+        const { data: newProd, error } = await supabase
+          .from("products")
+          .insert(payload)
+          .select("id")
+          .single();
+        if (error) throw error;
+        newProdId = newProd.id;
+      } catch (err: any) {
+        if (payload.subcategory_id && err.message?.includes("subcategory_id")) {
+          delete payload.subcategory_id;
+          const { data: newProd, error } = await supabase
+            .from("products")
+            .insert(payload)
+            .select("id")
+            .single();
+          if (error) throw error;
+          newProdId = newProd.id;
+        } else {
+          throw err;
+        }
+      }
+
+      // Si el usuario opera en Fábrica o Bodega, crear balance inicial 0
       if (user?.factoryId) {
         await supabase.from("inventory_balances").insert({
-          product_id: newProd.id,
+          product_id: newProdId,
           location_type: "factory",
           factory_id: user.factoryId,
           quantity: 0,
         });
       } else if (user?.warehouseId) {
         await supabase.from("inventory_balances").insert({
-          product_id: newProd.id,
+          product_id: newProdId,
           location_type: "warehouse",
           warehouse_id: user.warehouseId,
           quantity: 0,
@@ -332,15 +510,17 @@ export function useInventoryData() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
       queryClient.invalidateQueries({ queryKey: ["all_products_catalog"] });
-      queryClient.invalidateQueries({ queryKey: ["product_categories"] });
+      queryClient.invalidateQueries({ queryKey: ["product_categories_hierarchical"] });
     }
   });
 
+  // Mutación: Actualizar Producto
   const updateProductMutation = useMutation({
     mutationFn: async (data: {
       id: string;
       name?: string;
       category_id?: string;
+      subcategory_id?: string | null;
       unit_value?: number;
       cost_value?: number;
       unit_name?: string;
@@ -348,34 +528,68 @@ export function useInventoryData() {
       description?: string;
     }) => {
       const updatePayload: any = {};
-      if (data.name !== undefined) updatePayload.name = data.name;
+      if (data.name !== undefined) updatePayload.name = data.name.trim();
       if (data.category_id !== undefined) updatePayload.category_id = data.category_id;
+      if (data.subcategory_id !== undefined) updatePayload.subcategory_id = data.subcategory_id;
       if (data.unit_value !== undefined) updatePayload.unit_value = data.unit_value;
       if (data.cost_value !== undefined) updatePayload.cost_value = data.cost_value;
       if (data.unit_name !== undefined) updatePayload.unit_name = data.unit_name;
-      if (data.sku !== undefined) updatePayload.sku = data.sku;
-      if (data.description !== undefined) updatePayload.description = data.description;
+      if (data.sku !== undefined) updatePayload.sku = data.sku?.trim() || null;
+      if (data.description !== undefined) updatePayload.description = data.description?.trim() || null;
       updatePayload.updated_at = new Date().toISOString();
 
+      try {
+        const { error } = await supabase
+          .from("products")
+          .update(updatePayload)
+          .eq("id", data.id);
+        if (error) throw error;
+      } catch (err: any) {
+        if (updatePayload.subcategory_id && err.message?.includes("subcategory_id")) {
+          delete updatePayload.subcategory_id;
+          const { error } = await supabase
+            .from("products")
+            .update(updatePayload)
+            .eq("id", data.id);
+          if (error) throw error;
+        } else {
+          throw err;
+        }
+      }
+      return true;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
+      queryClient.invalidateQueries({ queryKey: ["all_products_catalog"] });
+      queryClient.invalidateQueries({ queryKey: ["product_categories_hierarchical"] });
+    }
+  });
+
+  // Mutación: Eliminar (Desactivar) Producto
+  const deleteProductMutation = useMutation({
+    mutationFn: async (id: string) => {
       const { error } = await supabase
         .from("products")
-        .update(updatePayload)
-        .eq("id", data.id);
-
+        .update({ is_active: false })
+        .eq("id", id);
       if (error) throw error;
       return true;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
       queryClient.invalidateQueries({ queryKey: ["all_products_catalog"] });
-      queryClient.invalidateQueries({ queryKey: ["product_categories"] });
+      queryClient.invalidateQueries({ queryKey: ["product_categories_hierarchical"] });
     }
   });
+
+  const catData = categoriesQuery.data || { all: [], main: [], subs: [] };
 
   return {
     inventory: inventoryQuery.data || [],
     allProducts: allProductsQuery.data || [],
-    categories: categoriesQuery.data || [],
+    categories: catData.main,
+    subcategories: catData.subs,
+    allCategoriesRaw: catData.all,
     isLoading: inventoryQuery.isLoading || categoriesQuery.isLoading,
     error: inventoryQuery.error || categoriesQuery.error,
     getMovementsQuery,
@@ -383,9 +597,15 @@ export function useInventoryData() {
     isUpdating: addMovementMutation.isPending,
     createCategory: createCategoryMutation.mutateAsync,
     isCreatingCategory: createCategoryMutation.isPending,
+    updateCategory: updateCategoryMutation.mutateAsync,
+    isUpdatingCategory: updateCategoryMutation.isPending,
+    deleteCategory: deleteCategoryMutation.mutateAsync,
+    isDeletingCategory: deleteCategoryMutation.isPending,
     createProduct: createProductMutation.mutateAsync,
     isCreatingProduct: createProductMutation.isPending,
     updateProduct: updateProductMutation.mutateAsync,
     isUpdatingProduct: updateProductMutation.isPending,
+    deleteProduct: deleteProductMutation.mutateAsync,
+    isDeletingProduct: deleteProductMutation.isPending,
   };
 }

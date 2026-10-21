@@ -33,11 +33,14 @@ import { formatCurrency } from "@/lib/format";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 type ViewPerspective = "boss" | "warehouse" | "factory";
 
 export function BossDashboard() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { user, role } = useSession();
   const { 
     salesToday, 
@@ -71,6 +74,7 @@ export function BossDashboard() {
   const [recaudoStore, setRecaudoStore] = useState("");
   const [recaudoAmount, setRecaudoAmount] = useState("");
   const [recaudoCategory, setRecaudoCategory] = useState("Verde");
+  const [isSubmittingRecaudo, setIsSubmittingRecaudo] = useState(false);
 
   const displayName = user?.fullName?.split(" ")[0] || "Director";
 
@@ -79,24 +83,20 @@ export function BossDashboard() {
     let verde = 0;
     let blanco = 0;
 
-    // Calcular ventas por categorías según datos reales o catálogos
+    // Calcular ventas por categorías según datos reales
     categoryChartData.forEach((c) => {
       const lower = c.name.toLowerCase();
       if (lower.includes("verde")) verde += c.value;
       else if (lower.includes("blanco")) blanco += c.value;
     });
 
-    // Si aún no hay transacciones en el día, mostrar los acumulados base
     if (verde === 0 && blanco === 0 && salesToday > 0) {
-      verde = salesToday * 0.65;
-      blanco = salesToday * 0.35;
-    } else if (verde === 0 && blanco === 0) {
-      verde = 1240000;
-      blanco = 860000;
+      verde = Math.round(salesToday * 0.5);
+      blanco = Math.round(salesToday * 0.5);
     }
 
-    const totalVentas = verde + blanco;
-    const recaudado = paymentsToday > 0 ? paymentsToday : 1450000;
+    const totalVentas = (verde + blanco) > 0 ? (verde + blanco) : salesToday;
+    const recaudado = paymentsToday;
     const faltante = Math.max(0, totalVentas - recaudado);
 
     return {
@@ -122,14 +122,6 @@ export function BossDashboard() {
       else if (d.status === "pending") overdue++;
     });
 
-    // Defaults visuales si hay pocos despachos aún
-    if (inProgress === 0 && completed === 0) {
-      overdue = 1;
-      returns = 3;
-      inProgress = 14;
-      completed = 94;
-    }
-
     return {
       overdue,
       returns,
@@ -154,18 +146,19 @@ export function BossDashboard() {
     });
 
     const chartData = [
-      { name: "In stock", value: inStock || 14, color: "#1E1E1E" },
-      { name: "Out of stock", value: outOfStock || 3, color: "#B85D35" },
-      { name: "Low stock", value: lowStock || 4, color: "#F7C38A" },
-      { name: "Dead stock", value: 1, color: "#4A3328" },
+      { name: "In stock", value: inStock, color: "#1E1E1E" },
+      { name: "Out of stock", value: outOfStock, color: "#B85D35" },
+      { name: "Low stock", value: lowStock, color: "#F7C38A" },
     ];
+
+    const hasData = inStock > 0 || lowStock > 0 || outOfStock > 0;
 
     return {
       inStock,
       lowStock,
       outOfStock,
-      totalUnits: totalItems || 134,
-      chartData
+      totalUnits: totalItems,
+      chartData: hasData ? chartData.filter(d => d.value > 0) : [{ name: "Sin items", value: 1, color: "#E7E5E4" }]
     };
   }, [inventory]);
 
@@ -235,6 +228,53 @@ export function BossDashboard() {
         quantity: 1,
         unitValue: Number(p.unit_value || 0)
       }]);
+    }
+  };
+
+  const handleRegisterRecaudo = async () => {
+    const targetStoreId = recaudoStore || stores[0]?.id;
+    if (!targetStoreId) {
+      toast.error("Selecciona una tienda para registrar el recaudo");
+      return;
+    }
+    const val = Number(recaudoAmount);
+    if (!val || val <= 0) {
+      toast.error("Ingresa un monto válido");
+      return;
+    }
+
+    try {
+      setIsSubmittingRecaudo(true);
+      const matchedCat = allProducts.find(p => (p as any).product_categories?.name?.toLowerCase().includes(recaudoCategory.toLowerCase()))?.category_id;
+
+      const { data: newPayment, error: pError } = await supabase
+        .from("payments")
+        .insert({
+          store_id: targetStoreId,
+          amount: val,
+          category_id: matchedCat || null,
+          status: "confirmed",
+          collected_by: user?.id || null,
+          notes: `Recaudo desde Dashboard (${recaudoCategory})`,
+        })
+        .select("id")
+        .single();
+
+      if (pError) throw pError;
+
+      // Invalidate queries so dashboard and sales update immediately
+      queryClient.invalidateQueries({ queryKey: ["boss-dashboard-payments-30d"] });
+      queryClient.invalidateQueries({ queryKey: ["boss-dashboard-sales-30d"] });
+      queryClient.invalidateQueries({ queryKey: ["live_payments"] });
+      queryClient.invalidateQueries({ queryKey: ["store_dispatches_total"] });
+
+      toast.success(`Recaudo de ${formatCurrency(val)} registrado exitosamente`);
+      setIsRecaudoModalOpen(false);
+      setRecaudoAmount("");
+    } catch (err: any) {
+      toast.error(err.message || "Error al registrar recaudo");
+    } finally {
+      setIsSubmittingRecaudo(false);
     }
   };
 
@@ -367,8 +407,8 @@ export function BossDashboard() {
                 <span className="text-[36px] font-black tracking-tight text-stone-950">
                   {formatCurrency(salesBreakdown.totalVentas)}
                 </span>
-                <span className="text-[12px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                  +12.4% hoy
+                <span className="text-[12px] font-bold text-stone-800 bg-black/10 px-2.5 py-0.5 rounded-full">
+                  Hoy
                 </span>
               </div>
 
@@ -816,15 +856,11 @@ export function BossDashboard() {
               </div>
 
               <Button 
-                onClick={() => {
-                  if (!recaudoAmount) return;
-                  toast.success(`Recaudo de $${Number(recaudoAmount).toLocaleString()} registrado exitosamente`);
-                  setIsRecaudoModalOpen(false);
-                  setRecaudoAmount("");
-                }}
+                onClick={handleRegisterRecaudo}
+                disabled={isSubmittingRecaudo || !recaudoAmount}
                 className="w-full h-14 rounded-2xl font-black text-[15px] bg-[#FEE867] text-stone-950 hover:bg-[#FEE867]/90 mt-2"
               >
-                Confirmar Recaudo
+                {isSubmittingRecaudo ? "Registrando Recaudo..." : "Confirmar Recaudo"}
               </Button>
             </div>
           </div>

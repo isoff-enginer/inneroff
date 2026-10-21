@@ -13,6 +13,7 @@ import {
   Package,
   ArrowRight,
   Folder,
+  FolderTree,
   Edit3
 } from "lucide-react";
 
@@ -41,6 +42,7 @@ function InventoryPage() {
   const { 
     inventory, 
     categories, 
+    subcategories,
     isLoading, 
     addMovement, 
     isUpdating,
@@ -73,6 +75,7 @@ function InventoryPage() {
   const [editProdId, setEditProdId] = useState("");
   const [editProdName, setEditProdName] = useState("");
   const [editProdCat, setEditProdCat] = useState("");
+  const [editProdSubcat, setEditProdSubcat] = useState("");
   const [editProdPrice, setEditProdPrice] = useState("");
   const [editProdCost, setEditProdCost] = useState("");
   const [editProdSku, setEditProdSku] = useState("");
@@ -83,6 +86,7 @@ function InventoryPage() {
   const [isCreateProdOpen, setIsCreateProdOpen] = useState(false);
   const [newProdName, setNewProdName] = useState("");
   const [newProdCat, setNewProdCat] = useState("");
+  const [newProdSubcat, setNewProdSubcat] = useState("");
   const [newProdPrice, setNewProdPrice] = useState("");
   const [newProdCost, setNewProdCost] = useState("");
   const [newProdSku, setNewProdSku] = useState("");
@@ -114,6 +118,7 @@ function InventoryPage() {
     setEditProdId(product.productId);
     setEditProdName(product.name);
     setEditProdCat(product.categoryId || "");
+    setEditProdSubcat(product.subcategoryId || "");
     setEditProdPrice(String(product.unitValue || 0));
     setEditProdCost(String(product.costValue || 0));
     setEditProdSku(product.sku || "");
@@ -129,6 +134,7 @@ function InventoryPage() {
         id: editProdId,
         name: editProdName,
         category_id: editProdCat || undefined,
+        subcategory_id: editProdSubcat || null,
         unit_value: Number(editProdPrice) || 0,
         cost_value: Number(editProdCost) || 0,
         sku: editProdSku,
@@ -152,6 +158,7 @@ function InventoryPage() {
       await createProduct({
         name: newProdName,
         category_id: newProdCat,
+        subcategory_id: newProdSubcat || null,
         unit_value: Number(newProdPrice) || 0,
         cost_value: Number(newProdCost) || 0,
         unit_name: newProdUnit,
@@ -162,6 +169,7 @@ function InventoryPage() {
       setIsCreateProdOpen(false);
       setNewProdName("");
       setNewProdCat("");
+      setNewProdSubcat("");
       setNewProdPrice("");
       setNewProdCost("");
       setNewProdSku("");
@@ -210,15 +218,26 @@ function InventoryPage() {
           </button>
 
           <h1 className="text-lg font-black tracking-tight text-stone-950">
-            Items
+            Items & Inventario
           </h1>
 
-          <button 
-            onClick={() => setIsCreateProdOpen(true)}
-            className="flex size-10 items-center justify-center rounded-full bg-white border border-stone-200/80 shadow-2xs text-stone-700 active:scale-95 transition-transform"
-          >
-            <MoreHorizontal className="size-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <Link 
+              to="/admin"
+              className="flex size-10 items-center justify-center rounded-full bg-white border border-stone-200/80 shadow-2xs text-stone-800 active:scale-95 transition-transform"
+              title="Panel Administrativo (Categorías y Subcategorías)"
+            >
+              <FolderTree className="size-4" />
+            </Link>
+
+            <button 
+              onClick={() => setIsCreateProdOpen(true)}
+              className="flex size-10 items-center justify-center rounded-full bg-[#FEE867] border border-stone-900/10 shadow-2xs text-stone-950 active:scale-95 transition-transform"
+              title="Crear Producto"
+            >
+              <Plus className="size-5 stroke-[2.5]" />
+            </button>
+          </div>
         </header>
 
         {/* BUSCADOR Y BOTON DE FILTROS */}
@@ -562,16 +581,35 @@ function InventoryPage() {
                 />
               </div>
 
-              <div>
-                <label className="text-[12px] font-bold text-stone-500 ml-1 mb-1 block">Categoría *</label>
-                <select 
-                  value={newProdCat}
-                  onChange={(e) => setNewProdCat(e.target.value)}
-                  className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[15px] outline-none focus:border-stone-900 transition-colors appearance-none"
-                >
-                  <option value="" disabled>Selecciona una categoría</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[12px] font-bold text-stone-500 ml-1 mb-1 block">Categoría *</label>
+                  <select 
+                    value={newProdCat}
+                    onChange={(e) => {
+                      setNewProdCat(e.target.value);
+                      setNewProdSubcat("");
+                    }}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] outline-none focus:border-stone-900 transition-colors appearance-none font-bold"
+                  >
+                    <option value="" disabled>Selecciona categoría</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[12px] font-bold text-stone-500 ml-1 mb-1 block">Subcategoría</label>
+                  <select 
+                    value={newProdSubcat}
+                    onChange={(e) => setNewProdSubcat(e.target.value)}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] outline-none focus:border-stone-900 transition-colors appearance-none font-bold"
+                  >
+                    <option value="">(Ninguna)</option>
+                    {subcategories.filter(s => s.parentId === newProdCat || s.parent_id === newProdCat).map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
@@ -641,16 +679,35 @@ function InventoryPage() {
                 />
               </div>
               
-              <div>
-                <label className="text-[12px] font-bold text-stone-500 ml-1 mb-1 block">Categoría</label>
-                <select 
-                  value={editProdCat}
-                  onChange={(e) => setEditProdCat(e.target.value)}
-                  className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[15px] outline-none focus:border-stone-900 transition-colors appearance-none"
-                >
-                  <option value="" disabled>Selecciona una categoría</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[12px] font-bold text-stone-500 ml-1 mb-1 block">Categoría</label>
+                  <select 
+                    value={editProdCat}
+                    onChange={(e) => {
+                      setEditProdCat(e.target.value);
+                      setEditProdSubcat("");
+                    }}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] outline-none focus:border-stone-900 transition-colors appearance-none font-bold"
+                  >
+                    <option value="" disabled>Selecciona categoría</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[12px] font-bold text-stone-500 ml-1 mb-1 block">Subcategoría</label>
+                  <select 
+                    value={editProdSubcat}
+                    onChange={(e) => setEditProdSubcat(e.target.value)}
+                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] outline-none focus:border-stone-900 transition-colors appearance-none font-bold"
+                  >
+                    <option value="">(Ninguna)</option>
+                    {subcategories.filter(s => s.parentId === editProdCat || s.parent_id === editProdCat).map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
