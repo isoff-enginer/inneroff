@@ -230,3 +230,26 @@ BEGIN
 
 END $$;
 
+-- ----------------------------------------------------
+-- F. CORREGIR POLÍTICAS RLS PARA RECAUDOS Y CUENTAS
+-- ----------------------------------------------------
+ALTER TABLE public.payments ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "payments_allow_all" ON public.payments;
+DROP POLICY IF EXISTS "payments_read_policy" ON public.payments;
+DROP POLICY IF EXISTS "payments_insert_policy" ON public.payments;
+
+CREATE POLICY "payments_allow_all" ON public.payments
+FOR ALL TO public
+USING (true)
+WITH CHECK (true);
+
+ALTER TABLE public.account_entries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "account_entries_allow_all" ON public.account_entries;
+CREATE POLICY "account_entries_allow_all" ON public.account_entries
+FOR ALL TO public
+USING (true)
+WITH CHECK (true);
+
+

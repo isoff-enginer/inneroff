@@ -118,9 +118,9 @@
     border-color: var(--color-border);
   }
 
-  body {
-    background-color: #231934;
-    color: #f3f0f7;
+  html, body {
+    background-color: #F8FAFC;
+    color: #0F172A;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -131,7 +131,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid #246bfd;
+    outline: 2px solid #0F172A;
     outline-offset: 2px;
   }
 }

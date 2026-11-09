@@ -19,6 +19,7 @@ import { useInventoryData } from "@/features/inventory/use-inventory-data";
 import { useSalesData } from "@/features/sales/use-sales-data";
 import { useSession } from "@/features/auth/session";
 import { toast } from "sonner";
+import { getProductPackagings, type ProductPackaging } from "@/features/inventory/product-presentations";
 
 export const Route = createFileRoute("/_app/dispatches")({
   head: () => ({
@@ -115,7 +116,16 @@ function DispatchesPage() {
   const [toType, setToType] = useState<LocationType>("store");
   const [toId, setToId] = useState("");
   const [dispatchNotes, setDispatchNotes] = useState("");
-  const [selectedItems, setSelectedItems] = useState<{ productId: string; name: string; quantity: number; unitValue: number }[]>([]);
+  const [selectedItems, setSelectedItems] = useState<{
+    productId: string;
+    name: string;
+    selectedPkgId: string;
+    pkgLabel: string;
+    multiplier: number;
+    pkgCount: number;
+    packagePrice: number;
+    availablePackagings: ProductPackaging[];
+  }[]>([]);
 
   // Filtered dispatches
   const filteredDispatches = useMemo(() => {
@@ -159,18 +169,53 @@ function DispatchesPage() {
     if (!prod) return;
     if (selectedItems.some(i => i.productId === productId)) return;
 
+    const details = getProductPackagings(prod.name);
+    const defaultPkg = details.packagings[0] || {
+      id: "unidad",
+      label: "Unidad",
+      multiplier: 1,
+      packagePrice: details.unitPrice,
+    };
+
     setSelectedItems(prev => [
       ...prev,
-      { productId, name: prod.name, quantity: 1, unitValue: Number(prod.unit_value || 0) }
+      {
+        productId,
+        name: details.name,
+        selectedPkgId: defaultPkg.id,
+        pkgLabel: defaultPkg.label,
+        multiplier: defaultPkg.multiplier,
+        pkgCount: 1,
+        packagePrice: defaultPkg.packagePrice,
+        availablePackagings: details.packagings,
+      }
     ]);
+  };
+
+  const handleChangePkg = (productId: string, pkgId: string) => {
+    setSelectedItems(prev => prev.map(item => {
+      if (item.productId === productId) {
+        const pkg = item.availablePackagings.find(p => p.id === pkgId);
+        if (pkg) {
+          return {
+            ...item,
+            selectedPkgId: pkg.id,
+            pkgLabel: pkg.label,
+            multiplier: pkg.multiplier,
+            packagePrice: pkg.packagePrice,
+          };
+        }
+      }
+      return item;
+    }));
   };
 
   const handleUpdateItemQty = (productId: string, delta: number) => {
     setSelectedItems(prev =>
       prev.map(item => {
         if (item.productId === productId) {
-          const newQ = Math.max(1, item.quantity + delta);
-          return { ...item, quantity: newQ };
+          const newQ = Math.max(1, item.pkgCount + delta);
+          return { ...item, pkgCount: newQ };
         }
         return item;
       })
@@ -190,25 +235,29 @@ function DispatchesPage() {
       return;
     }
     if (selectedItems.length === 0) {
-      toast.error("Agrega al menos un producto");
+      toast.error("Agrega al menos una presentación al despacho");
       return;
     }
 
     try {
+      const notesDetail = selectedItems.map(
+        i => `${i.pkgCount}x ${i.pkgLabel} ${i.name}`
+      ).join(", ");
+
       await createDispatch({
         fromType,
         fromId: effectiveFromId,
         toType,
         toId: effectiveToId,
-        notes: dispatchNotes,
+        notes: dispatchNotes ? `${dispatchNotes} (${notesDetail})` : notesDetail,
         items: selectedItems.map(i => ({
           productId: i.productId,
-          quantity: i.quantity,
-          unitValue: i.unitValue
+          quantity: i.pkgCount * i.multiplier, // Unidades físicas reales descontadas
+          unitValue: Math.round(i.packagePrice / i.multiplier),
         }))
       });
 
-      toast.success("Despacho creado exitosamente");
+      toast.success("Despacho de presentaciones creado exitosamente");
       setIsCreateOpen(false);
       setSelectedItems([]);
       setDispatchNotes("");
@@ -217,7 +266,7 @@ function DispatchesPage() {
     }
   };
 
-  const totalValueOfItems = selectedItems.reduce((acc, curr) => acc + (curr.quantity * curr.unitValue), 0);
+  const totalValueOfItems = selectedItems.reduce((acc, curr) => acc + (curr.pkgCount * curr.packagePrice), 0);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28 font-sans">
@@ -586,36 +635,64 @@ function DispatchesPage() {
 
               {/* Items seleccionados */}
               <div className="space-y-2">
-                <span className="text-[11px] font-bold text-slate-500 uppercase">Productos en este despacho ({selectedItems.length}):</span>
+                <span className="text-[11px] font-bold text-slate-500 uppercase">Presentaciones en este despacho ({selectedItems.length}):</span>
                 {selectedItems.length === 0 ? (
                   <p className="text-[13px] text-slate-400 italic py-2">Ningún producto agregado aún.</p>
                 ) : (
                   selectedItems.map((it) => (
-                    <div key={it.productId} className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-200/80">
-                      <div className="flex flex-col">
-                        <span className="text-[13px] font-bold text-slate-900">{it.name}</span>
-                        <span className="text-[11px] text-slate-500">${it.unitValue.toLocaleString()} c/u</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button 
-                          type="button"
-                          onClick={() => handleUpdateItemQty(it.productId, -1)}
-                          className="size-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-700"
-                        >-</button>
-                        <span className="text-sm font-black w-6 text-center">{it.quantity}</span>
-                        <button 
-                          type="button"
-                          onClick={() => handleUpdateItemQty(it.productId, 1)}
-                          className="size-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-700"
-                        >+</button>
+                    <div key={it.productId} className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[14px] font-black text-slate-900">{it.name}</span>
                         <button 
                           type="button"
                           onClick={() => handleRemoveItem(it.productId)}
-                          className="size-7 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center"
+                          className="text-[11px] font-bold text-rose-500 hover:text-rose-700"
                         >
-                          <X className="size-4" />
+                          Quitar
                         </button>
+                      </div>
+
+                      {/* Selector de Presentación / Empaque */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {it.availablePackagings.map(pkg => (
+                          <button
+                            key={pkg.id}
+                            type="button"
+                            onClick={() => handleChangePkg(it.productId, pkg.id)}
+                            className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-colors ${
+                              it.selectedPkgId === pkg.id 
+                                ? "bg-slate-900 text-white" 
+                                : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-100"
+                            }`}
+                          >
+                            {pkg.label}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-200/60">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] font-bold text-slate-500">
+                            {it.pkgCount}x {it.pkgLabel} = <span className="text-slate-900 font-black">{it.pkgCount * it.multiplier} unidades</span>
+                          </span>
+                          <span className="text-[12px] font-black text-slate-900">
+                            Total: ${Number(it.pkgCount * it.packagePrice).toLocaleString()}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button 
+                            type="button"
+                            onClick={() => handleUpdateItemQty(it.productId, -1)}
+                            className="size-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-700"
+                          >-</button>
+                          <span className="text-sm font-black w-6 text-center">{it.pkgCount}</span>
+                          <button 
+                            type="button"
+                            onClick={() => handleUpdateItemQty(it.productId, 1)}
+                            className="size-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-700"
+                          >+</button>
+                        </div>
                       </div>
                     </div>
                   ))

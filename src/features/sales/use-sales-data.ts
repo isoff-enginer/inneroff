@@ -154,19 +154,35 @@ export function useSalesData() {
       amount,
       notes,
     }: {
-      storeId: string;
-      categoryId: string;
+      storeId?: string;
+      categoryId?: string;
       amount: number;
       notes?: string;
     }) => {
+      let resolvedStoreId = storeId || "";
+      let resolvedCatId = categoryId || "";
+
+      if (!resolvedStoreId) {
+        const { data: s } = await supabase.from("stores").select("id").neq("status", "inactive").limit(1);
+        resolvedStoreId = s?.[0]?.id || "";
+      }
+
+      if (!resolvedCatId) {
+        const { data: c } = await supabase.from("product_categories").select("id").limit(1);
+        resolvedCatId = c?.[0]?.id || "";
+      }
+
+      const { data: authUser } = await supabase.auth.getUser();
+      const currentUserId = authUser?.user?.id || user?.id || null;
+
       const { data: newPayment, error: paymentError } = await supabase
         .from("payments")
         .insert({
-          store_id: storeId,
-          category_id: categoryId,
+          store_id: resolvedStoreId,
+          category_id: resolvedCatId,
           amount: amount,
           status: "confirmed",
-          collected_by: user?.id || null,
+          collected_by: currentUserId,
           notes: notes || null,
         })
         .select("id")
@@ -177,12 +193,12 @@ export function useSalesData() {
       // Also record entry in account_entries for complete double-entry tracking
       try {
         await supabase.from("account_entries").insert({
-          store_id: storeId,
-          category_id: categoryId,
+          store_id: resolvedStoreId,
+          category_id: resolvedCatId,
           amount: amount,
           entry_type: "income",
           payment_id: newPayment.id,
-          created_by: user?.id || null,
+          created_by: currentUserId,
           notes: notes || "Recaudo confirmado",
         });
       } catch (entryErr) {
