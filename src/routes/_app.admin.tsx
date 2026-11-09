@@ -24,6 +24,8 @@ import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useSession } from "@/features/auth/session";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/_app/admin")({
   head: () => ({
@@ -36,6 +38,7 @@ type AdminTab = "products" | "categories" | "subcategories";
 
 function AdminPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { role } = useSession();
   const {
     allProducts,
@@ -245,28 +248,84 @@ function AdminPage() {
     }
   };
 
-  // Initial Seed for Verde and Blanco
+  // Initial Seed for Verde, Blanco, Flores, Rojas
   const handleSeedInitialCatalog = async () => {
-    if (!confirm("¿Deseas inicializar las categorías Verde, Blanco y sus subproductos base?")) return;
+    if (!confirm("¿Deseas inicializar las 4 categorías (Verde, Blanco, Flores, Rojas) y los subproductos base?")) return;
 
     try {
       toast.info("Configurando catálogo...");
       
-      // 1. Crear o buscar categoría Verde
+      // 1. Categoría Verde
       let catVerde = categories.find(c => c.name.toLowerCase() === "verde");
       if (!catVerde) {
         await createCategory({ name: "Verde", description: "Productos Categoría Verde" });
       }
       
-      // 2. Crear o buscar categoría Blanco
+      // 2. Categoría Blanco
       let catBlanco = categories.find(c => c.name.toLowerCase() === "blanco");
       if (!catBlanco) {
         await createCategory({ name: "Blanco", description: "Productos Categoría Blanco" });
       }
 
-      toast.success("Categorías base listas. Ahora puedes agregar o personalizar subcategorías y productos.");
+      // 3. Categoría Flores
+      let catFlores = categories.find(c => c.name.toLowerCase() === "flores");
+      if (!catFlores) {
+        await createCategory({ name: "Flores", description: "Productos Categoría Flores" });
+      }
+      const existingFlorProd = allProducts.find((p: any) => p.name.toLowerCase() === "flores");
+      if (!existingFlorProd && catFlores) {
+        await createProduct({
+          name: "Flores",
+          category_id: catFlores.id,
+          unit_value: 8000,
+          cost_value: 0,
+          unit_name: "Unidad",
+          sku: "FLO-UNI-01",
+          description: "Unidad: 8.000"
+        });
+      }
+
+      // 4. Categoría Rojas
+      let catRojas = categories.find(c => c.name.toLowerCase() === "rojas");
+      if (!catRojas) {
+        await createCategory({ name: "Rojas", description: "Productos Categoría Rojas" });
+      }
+      const existingRojaProd = allProducts.find((p: any) => p.name.toLowerCase() === "rojas");
+      if (!existingRojaProd && catRojas) {
+        await createProduct({
+          name: "Rojas",
+          category_id: catRojas.id,
+          unit_value: 8000,
+          cost_value: 0,
+          unit_name: "Unidad",
+          sku: "ROJ-UNI-01",
+          description: "Unidad: 8.000"
+        });
+      }
+
+      toast.success("Categorías Verde, Blanco, Flores ($8.000) y Rojas ($8.000) configuradas exitosamente.");
     } catch (e: any) {
       toast.error(e.message || "Error al inicializar");
+    }
+  };
+
+  // Limpiar ventas y recaudos ficticios
+  const handleClearFictitiousSales = async () => {
+    if (!confirm("¿Eliminar todas las ventas y recaudos ficticios de prueba? El total se reiniciará a $0.")) return;
+
+    try {
+      toast.info("Borrando ventas y recaudos...");
+      await supabase.from("payments").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase.from("account_entries").delete().eq("entry_type", "income");
+
+      queryClient.invalidateQueries({ queryKey: ["boss-dashboard-sales-30d"] });
+      queryClient.invalidateQueries({ queryKey: ["boss-dashboard-payments-30d"] });
+      queryClient.invalidateQueries({ queryKey: ["live_payments"] });
+      queryClient.invalidateQueries({ queryKey: ["store_dispatches_total"] });
+
+      toast.success("¡Ventas ficticias borradas con éxito! Dashboard reiniciado.");
+    } catch (e: any) {
+      toast.error(e.message || "Error al borrar ventas ficticias");
     }
   };
 
@@ -302,13 +361,23 @@ function AdminPage() {
             <span className="text-[11px] font-bold text-stone-400">Catálogo & Categorías</span>
           </div>
 
-          <button 
-            onClick={handleSeedInitialCatalog}
-            className="flex size-10 items-center justify-center rounded-full bg-white border border-stone-200/80 shadow-2xs text-stone-700 active:scale-95 transition-transform"
-            title="Inicializar Verde & Blanco"
-          >
-            <Sparkles className="size-4 text-amber-500" />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button 
+              onClick={handleClearFictitiousSales}
+              className="flex size-10 items-center justify-center rounded-full bg-rose-50 border border-rose-200 shadow-2xs text-rose-600 active:scale-95 transition-transform"
+              title="Borrar ventas ficticias (Reiniciar a $0)"
+            >
+              <Trash2 className="size-4" />
+            </button>
+
+            <button 
+              onClick={handleSeedInitialCatalog}
+              className="flex size-10 items-center justify-center rounded-full bg-white border border-stone-200/80 shadow-2xs text-stone-700 active:scale-95 transition-transform"
+              title="Inicializar Verde, Blanco, Flores y Rojas"
+            >
+              <Sparkles className="size-4 text-amber-500" />
+            </button>
+          </div>
         </header>
 
         {/* TABS SELECTOR */}

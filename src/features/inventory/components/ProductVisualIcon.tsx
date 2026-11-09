@@ -100,6 +100,28 @@ export function ProductVisualIcon({ name, category, type, imageType, className =
     );
   }
 
+  // Flores
+  if (normType.includes("flor")) {
+    return (
+      <div className={`relative flex items-center justify-center ${className}`}>
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-400/30 via-[#2d2244] to-[#231934] border border-rose-400/40 shadow-lg shadow-rose-400/10">
+          <Sparkles className="size-7 text-rose-400 stroke-[2.2]" />
+        </div>
+      </div>
+    );
+  }
+
+  // Rojas
+  if (normType.includes("roja")) {
+    return (
+      <div className={`relative flex items-center justify-center ${className}`}>
+        <div className="flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500/30 via-[#2d2244] to-[#231934] border border-red-500/40 shadow-lg shadow-red-500/10">
+          <CircleDot className="size-7 text-red-500 stroke-[2.2]" />
+        </div>
+      </div>
+    );
+  }
+
   // Default iOS Package
   return (
     <div className={`relative flex items-center justify-center ${className}`}>

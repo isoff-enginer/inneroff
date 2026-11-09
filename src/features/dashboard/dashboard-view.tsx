@@ -49,7 +49,7 @@ export function BossDashboard() {
     isLoading: isDashboardLoading 
   } = useBossDashboardData();
 
-  const { inventory, allProducts, isLoading: isInventoryLoading } = useInventoryData();
+  const { inventory, allProducts, categories, isLoading: isInventoryLoading } = useInventoryData();
   const { dispatches, createDispatch, isCreatingDispatch, locations } = useDispatches();
 
   // Safely extract typed location arrays from locations list
@@ -78,35 +78,53 @@ export function BossDashboard() {
 
   const displayName = user?.fullName?.split(" ")[0] || "Director";
 
-  // Desglose de Ventas por Categoría (Verde y Blanco)
-  const salesBreakdown = useMemo(() => {
-    let verde = 0;
-    let blanco = 0;
+  // Desglose de Ventas por Categorías Dinámicas (Verde, Blanco, Flores, Rojas, etc.)
+  const dynamicCategorySales = useMemo(() => {
+    // Si no hay categorías creadas aún, usar lista base
+    const baseCats = categories.length > 0 
+      ? categories 
+      : [
+          { id: "verde", name: "Verde" },
+          { id: "blanco", name: "Blanco" },
+          { id: "flores", name: "Flores" },
+          { id: "rojas", name: "Rojas" }
+        ];
 
-    // Calcular ventas por categorías según datos reales
-    categoryChartData.forEach((c) => {
-      const lower = c.name.toLowerCase();
-      if (lower.includes("verde")) verde += c.value;
-      else if (lower.includes("blanco")) blanco += c.value;
+    const colorPalette = [
+      { dot: "bg-emerald-500", text: "text-emerald-900" },
+      { dot: "bg-sky-500", text: "text-sky-900" },
+      { dot: "bg-rose-500", text: "text-rose-900" },
+      { dot: "bg-red-500", text: "text-red-900" },
+      { dot: "bg-amber-500", text: "text-amber-900" },
+      { dot: "bg-purple-500", text: "text-purple-900" },
+    ];
+
+    return baseCats.map((cat, idx) => {
+      const match = categoryChartData.find(c => c.name.toLowerCase().trim() === cat.name.toLowerCase().trim());
+      const value = match ? match.value : 0;
+      const color = colorPalette[idx % colorPalette.length];
+      return {
+        id: cat.id,
+        name: cat.name,
+        value,
+        color
+      };
     });
+  }, [categories, categoryChartData]);
 
-    if (verde === 0 && blanco === 0 && salesToday > 0) {
-      verde = Math.round(salesToday * 0.5);
-      blanco = Math.round(salesToday * 0.5);
-    }
-
-    const totalVentas = (verde + blanco) > 0 ? (verde + blanco) : salesToday;
+  const salesBreakdown = useMemo(() => {
+    const totalCatVentas = dynamicCategorySales.reduce((acc, c) => acc + c.value, 0);
+    const totalVentas = totalCatVentas > 0 ? totalCatVentas : salesToday;
     const recaudado = paymentsToday;
     const faltante = Math.max(0, totalVentas - recaudado);
 
     return {
-      verde,
-      blanco,
       totalVentas,
       recaudado,
-      faltante
+      faltante,
+      categoryList: dynamicCategorySales
     };
-  }, [categoryChartData, salesToday, paymentsToday]);
+  }, [dynamicCategorySales, salesToday, paymentsToday]);
 
   // Métricas de Despachos (Orders)
   const dispatchMetrics = useMemo(() => {
@@ -412,27 +430,19 @@ export function BossDashboard() {
                 </span>
               </div>
 
-              {/* Desglose por Categorías: Blanco y Verde */}
+              {/* Desglose por Categorías Dinámicas (Verde, Blanco, Flores, Rojas, etc.) */}
               <div className="grid grid-cols-2 gap-2.5 p-3 rounded-2xl bg-white/60 border border-black/5 mb-4">
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-bold text-stone-600 uppercase flex items-center gap-1.5">
-                    <span className="size-2 rounded-full bg-emerald-500" />
-                    Cat. Verde
-                  </span>
-                  <span className="text-[17px] font-black text-stone-900">
-                    {formatCurrency(salesBreakdown.verde)}
-                  </span>
-                </div>
-
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-bold text-stone-600 uppercase flex items-center gap-1.5">
-                    <span className="size-2 rounded-full bg-sky-500" />
-                    Cat. Blanco
-                  </span>
-                  <span className="text-[17px] font-black text-stone-900">
-                    {formatCurrency(salesBreakdown.blanco)}
-                  </span>
-                </div>
+                {salesBreakdown.categoryList.map((cat) => (
+                  <div key={cat.id} className="flex flex-col">
+                    <span className="text-[11px] font-bold text-stone-600 uppercase flex items-center gap-1.5">
+                      <span className={`size-2 rounded-full ${cat.color.dot}`} />
+                      Cat. {cat.name}
+                    </span>
+                    <span className="text-[17px] font-black text-stone-900">
+                      {formatCurrency(cat.value)}
+                    </span>
+                  </div>
+                ))}
               </div>
 
               {/* Dinero Recaudado y Dinero Faltante */}
@@ -839,19 +849,17 @@ export function BossDashboard() {
 
               <div>
                 <label className="text-[12px] font-bold text-stone-500 block mb-1">Categoría</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button 
-                    onClick={() => setRecaudoCategory("Verde")}
-                    className={`p-3 rounded-xl text-[13px] font-bold border transition-colors ${recaudoCategory === "Verde" ? "bg-[#FEE867] border-stone-900 text-stone-950" : "bg-stone-50 border-stone-200 text-stone-600"}`}
-                  >
-                    Verde
-                  </button>
-                  <button 
-                    onClick={() => setRecaudoCategory("Blanco")}
-                    className={`p-3 rounded-xl text-[13px] font-bold border transition-colors ${recaudoCategory === "Blanco" ? "bg-[#FEE867] border-stone-900 text-stone-950" : "bg-stone-50 border-stone-200 text-stone-600"}`}
-                  >
-                    Blanco
-                  </button>
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto">
+                  {(categories.length > 0 ? categories : [{ id: "verde", name: "Verde" }, { id: "blanco", name: "Blanco" }, { id: "flores", name: "Flores" }, { id: "rojas", name: "Rojas" }]).map((c) => (
+                    <button 
+                      key={c.id}
+                      type="button"
+                      onClick={() => setRecaudoCategory(c.name)}
+                      className={`p-3 rounded-xl text-[13px] font-bold border transition-colors ${recaudoCategory.toLowerCase() === c.name.toLowerCase() ? "bg-[#FEE867] border-stone-900 text-stone-950" : "bg-stone-50 border-stone-200 text-stone-600"}`}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
                 </div>
               </div>
 
