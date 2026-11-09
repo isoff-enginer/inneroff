@@ -87,16 +87,22 @@ export function useSalesData() {
     },
   });
 
-  // 3. Fetch stores for the selector
+  // 3. Fetch stores for the selector (Centro y La Usa)
   const storesQuery = useQuery({
     queryKey: ["sales_stores_list"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("stores")
-        .select("id, name")
+        .select("id, name, status")
+        .neq("status", "inactive")
         .order("name");
-      if (error) throw error;
-      return data || [];
+      if (error || !data || data.length === 0) {
+        return [
+          { id: "store-centro", name: "Centro" },
+          { id: "store-la-usa", name: "La Usa" },
+        ];
+      }
+      return data;
     },
   });
 

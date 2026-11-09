@@ -11,6 +11,18 @@ export const Route = createFileRoute("/_app")({
   component: AppLayout,
 });
 
+const PRODUCT_IMAGES_CACHE = [
+  "/fotos de productos/mamita.png",
+  "/fotos de productos/tornillos.png",
+  "/fotos de productos/gordos.png",
+  "/fotos de productos/largos.png",
+  "/fotos de productos/minis.png",
+  "/fotos de productos/rojas.png",
+  "/fotos de productos/flores.png",
+  "/fotos de productos/baldes.png",
+  "/fotos de productos/pre rolls.png",
+];
+
 function AppLayout() {
   const { isAuthenticated, isLoading } = useSession();
   const { unreadCount } = useRealtimeNotifications();
@@ -25,6 +37,13 @@ function AppLayout() {
   useEffect(() => {
     if (isAuthenticated) {
       registerServiceWorker();
+
+      // Precarga optimizada en memoria de las 9 fotos de productos para renderizado instantáneo
+      PRODUCT_IMAGES_CACHE.forEach((src) => {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = src;
+      });
     }
   }, [isAuthenticated]);
 

@@ -18,7 +18,8 @@ export function useBossDashboardData() {
           amount,
           created_at,
           store_id,
-          category:product_categories(name),
+          notes,
+          category:product_categories(id, name, parent_id),
           store:stores(name)
         `)
         .eq("entry_type", "income")
@@ -148,8 +149,24 @@ export function useBossDashboardData() {
   // Agrupar ventas por día (últimos 30) para la gráfica
   const salesByDayMap = new Map<string, number>();
   
-  // Categorías de ventas para el Pie Chart
-  const salesByCategoryMap = new Map<string, number>();
+  // Categorías de ventas estrictamente en 3 grupos:
+  // 1. Blanco (Mamitas, Tornillo)
+  // 2. Verde (Lisos, Largos, Minis)
+  // 3. Productos adicionales (Rojas, Flores, Baldes, Pre-roll)
+  let blancoSalesToday = 0;
+  let verdeSalesToday = 0;
+  let adicionalesSalesToday = 0;
+
+  let rojasSalesToday = 0;
+  let floresSalesToday = 0;
+  let baldesSalesToday = 0;
+  let prerollSalesToday = 0;
+
+  const threeGroupsSalesMap = new Map<string, number>([
+    ["Blanco", 0],
+    ["Verde", 0],
+    ["Productos adicionales", 0],
+  ]);
 
   salesData.forEach((entry: any) => {
     const time = new Date(entry.created_at).getTime();
@@ -165,9 +182,34 @@ export function useBossDashboardData() {
     const dateStr = new Date(entry.created_at).toLocaleDateString('es-ES', { month: 'short', day: 'numeric' });
     salesByDayMap.set(dateStr, (salesByDayMap.get(dateStr) || 0) + amount);
 
-    // Donut de categorías (solo consideramos los últimos 30 días en general)
-    const catName = entry.category?.name || 'Otros';
-    salesByCategoryMap.set(catName, (salesByCategoryMap.get(catName) || 0) + amount);
+    // Clasificación estricta en los 3 grupos requeridos
+    const catNameLower = (entry.category?.name || entry.notes || "").toLowerCase().trim();
+    
+    if (catNameLower.includes("blanco") || catNameLower.includes("mamita") || catNameLower.includes("tornillo")) {
+      threeGroupsSalesMap.set("Blanco", (threeGroupsSalesMap.get("Blanco") || 0) + amount);
+      if (time >= startOfToday) {
+        blancoSalesToday += amount;
+      }
+    } else if (catNameLower.includes("verde") || catNameLower.includes("liso") || catNameLower.includes("gordo") || catNameLower.includes("largo") || catNameLower.includes("mini")) {
+      threeGroupsSalesMap.set("Verde", (threeGroupsSalesMap.get("Verde") || 0) + amount);
+      if (time >= startOfToday) {
+        verdeSalesToday += amount;
+      }
+    } else {
+      threeGroupsSalesMap.set("Productos adicionales", (threeGroupsSalesMap.get("Productos adicionales") || 0) + amount);
+      if (time >= startOfToday) {
+        adicionalesSalesToday += amount;
+        if (catNameLower.includes("roja")) {
+          rojasSalesToday += amount;
+        } else if (catNameLower.includes("flor")) {
+          floresSalesToday += amount;
+        } else if (catNameLower.includes("pre-roll") || catNameLower.includes("preroll")) {
+          prerollSalesToday += amount;
+        } else if (catNameLower.includes("balde")) {
+          baldesSalesToday += amount;
+        }
+      }
+    }
   });
 
   // Rellenar días vacíos para el chart
@@ -183,10 +225,23 @@ export function useBossDashboardData() {
     });
   }
 
-  const categoryChartData = Array.from(salesByCategoryMap.entries()).map(([name, value]) => ({
-    name,
-    value
-  })).sort((a, b) => b.value - a.value);
+  const categoryChartData = [
+    { name: "Blanco", value: threeGroupsSalesMap.get("Blanco") || 0, color: "#0F172A" },
+    { name: "Verde", value: threeGroupsSalesMap.get("Verde") || 0, color: "#059669" },
+    { name: "Productos adicionales", value: threeGroupsSalesMap.get("Productos adicionales") || 0, color: "#E11D48" },
+  ];
+
+  const liquidationData = {
+    blanco: blancoSalesToday,
+    verde: verdeSalesToday,
+    adicionales: adicionalesSalesToday,
+    adicionalesBreakdown: {
+      rojas: rojasSalesToday,
+      flores: floresSalesToday,
+      baldes: baldesSalesToday,
+      preroll: prerollSalesToday,
+    }
+  };
 
   const salesTrend = salesYesterday > 0 ? ((salesToday - salesYesterday) / salesYesterday) * 100 : 0;
 
@@ -359,6 +414,7 @@ export function useBossDashboardData() {
     criticalInventoryItems,
     salesChartData,
     categoryChartData,
+    liquidationData,
     recentActivity,
     isLoading:
       salesQuery.isLoading ||

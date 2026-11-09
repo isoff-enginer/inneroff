@@ -165,99 +165,147 @@ export function useDispatches() {
       const [
         { data: factories },
         { data: warehouses },
-        { data: stores }
+        storesResult
       ] = await Promise.all([
         supabase.from("factories").select("id, name").eq("is_active", true),
         supabase.from("warehouses").select("id, name").eq("is_active", true),
-        supabase.from("stores").select("id, name").eq("is_active", true),
+        supabase.from("stores").select("id, name, status").neq("status", "inactive").order("name"),
       ]);
 
       const locs: LocationOption[] = [];
       (factories || []).forEach(f => locs.push({ id: f.id, name: f.name, type: "factory" }));
       (warehouses || []).forEach(w => locs.push({ id: w.id, name: w.name, type: "warehouse" }));
-      (stores || []).forEach(s => locs.push({ id: s.id, name: s.name, type: "store" }));
+      
+      const stores = storesResult?.data || [];
+      if (stores.length > 0) {
+        stores.forEach(s => locs.push({ id: s.id, name: s.name, type: "store" }));
+      } else {
+        // Tiendas requeridas: Centro y La Usa
+        locs.push({ id: "store-centro", name: "Centro", type: "store" });
+        locs.push({ id: "store-la-usa", name: "La Usa", type: "store" });
+      }
 
       return locs;
     }
   });
 
   const createDispatchMutation = useMutation({
-    mutationFn: async ({
-      fromLocationType,
-      fromId,
-      toLocationType,
-      toId,
-      items,
-      notes,
-    }: {
-      fromLocationType: LocationType;
+    mutationFn: async (payload: {
+      fromLocationType?: LocationType;
+      fromType?: LocationType;
       fromId: string;
-      toLocationType: LocationType;
+      toLocationType?: LocationType;
+      toType?: LocationType;
       toId: string;
-      items: { product_id: string; quantity: number; unit_value: number }[];
+      items: { product_id?: string; productId?: string; quantity: number; unit_value?: number; unitValue?: number }[];
       notes?: string;
     }) => {
-      // Try RPC first
-      const { data: rpcData, error: rpcErr } = await supabase.rpc(
-        // @ts-ignore
-        "create_operational_dispatch",
-        {
-          p_from_location_type: fromLocationType,
-          p_from_id: fromId,
-          p_to_location_type: toLocationType,
-          p_to_id: toId,
-          p_items: items,
-          p_notes: notes || null,
+      const fromLoc = payload.fromLocationType || payload.fromType || "warehouse";
+      const toLoc = payload.toLocationType || payload.toType || "store";
+      const fromId = payload.fromId;
+      const toId = payload.toId;
+      const notes = payload.notes || null;
+
+      const normalizedItems = (payload.items || []).map(it => ({
+        product_id: (it.product_id || it.productId || "") as string,
+        quantity: Number(it.quantity || 0),
+        unit_value: Number(it.unit_value ?? it.unitValue ?? 0),
+      })).filter(it => it.product_id && it.quantity > 0);
+
+      if (normalizedItems.length === 0) {
+        throw new Error("El despacho debe contener al menos un producto válido");
+      }
+
+      const fromFields: any = { from_location_type: fromLoc };
+      if (fromLoc === "factory") fromFields.from_factory_id = fromId;
+      if (fromLoc === "warehouse") fromFields.from_warehouse_id = fromId;
+      if (fromLoc === "store") fromFields.from_store_id = fromId;
+
+      const toFields: any = { to_location_type: toLoc };
+      if (toLoc === "factory") toFields.to_factory_id = toId;
+      if (toLoc === "warehouse") toFields.to_warehouse_id = toId;
+      if (toLoc === "store") toFields.to_store_id = toId;
+
+      const totalVal = normalizedItems.reduce((acc, it) => acc + (it.quantity * it.unit_value), 0);
+
+      // 1. Crear registro de despacho
+      const { data: newDisp, error: dispErr } = await supabase
+        .from("dispatches")
+        .insert({
+          ...fromFields,
+          ...toFields,
+          status: "dispatched",
+          dispatched_at: new Date().toISOString(),
+          created_by: user?.id,
+          total_value: totalVal,
+          notes,
+        })
+        .select("id, dispatch_number")
+        .single();
+
+      if (dispErr) throw dispErr;
+
+      // 2. Insertar items del despacho
+      const itemsToInsert = normalizedItems.map(it => ({
+        dispatch_id: newDisp.id,
+        product_id: it.product_id,
+        quantity: it.quantity,
+        unit_value: it.unit_value,
+        total_value: it.quantity * it.unit_value,
+      }));
+
+      const { error: itemsErr } = await supabase.from("dispatch_items").insert(itemsToInsert);
+      if (itemsErr) throw itemsErr;
+
+      // 3. Descontar del inventario de origen y registrar movimientos
+      for (const it of normalizedItems) {
+        let balQuery = supabase
+          .from("inventory_balances")
+          .select("id, quantity")
+          .eq("product_id", it.product_id)
+          .eq("location_type", fromLoc);
+
+        if (fromLoc === "factory") balQuery = balQuery.eq("factory_id", fromId);
+        else if (fromLoc === "warehouse") balQuery = balQuery.eq("warehouse_id", fromId);
+        else if (fromLoc === "store") balQuery = balQuery.eq("store_id", fromId);
+
+        const { data: existingBal } = await balQuery.maybeSingle();
+
+        if (existingBal) {
+          const newQty = Math.max(0, Number(existingBal.quantity || 0) - it.quantity);
+          await supabase.from("inventory_balances").update({ quantity: newQty }).eq("id", existingBal.id);
         }
-      );
 
-      if (rpcErr) {
-        // Fallback standard insert
-        const fromFields: any = { from_location_type: fromLocationType };
-        if (fromLocationType === "factory") fromFields.from_factory_id = fromId;
-        if (fromLocationType === "warehouse") fromFields.from_warehouse_id = fromId;
-        if (fromLocationType === "store") fromFields.from_store_id = fromId;
-
-        const toFields: any = { to_location_type: toLocationType };
-        if (toLocationType === "factory") toFields.to_factory_id = toId;
-        if (toLocationType === "warehouse") toFields.to_warehouse_id = toId;
-        if (toLocationType === "store") toFields.to_store_id = toId;
-
-        const totalVal = items.reduce((acc, it) => acc + (it.quantity * it.unit_value), 0);
-
-        const { data: newDisp, error: dispErr } = await supabase
-          .from("dispatches")
-          .insert({
-            ...fromFields,
-            ...toFields,
-            status: "dispatched",
-            dispatched_at: new Date().toISOString(),
-            created_by: user?.id,
-            total_value: totalVal,
-            notes: notes || null,
-          })
-          .select("id")
-          .single();
-
-        if (dispErr) throw dispErr;
-
-        const itemsToInsert = items.map(it => ({
-          dispatch_id: newDisp.id,
+        // Registrar movimiento de salida
+        const movPayload: any = {
           product_id: it.product_id,
+          movement_type: "dispatch_out",
           quantity: it.quantity,
           unit_value: it.unit_value,
           total_value: it.quantity * it.unit_value,
-        }));
+          from_location_type: fromLoc,
+          to_location_type: toLoc,
+          notes: `Despacho #${newDisp.dispatch_number || ""} enviado`,
+          created_by: user?.id,
+        };
+        if (fromLoc === "factory") movPayload.from_factory_id = fromId;
+        if (fromLoc === "warehouse") movPayload.from_warehouse_id = fromId;
+        if (fromLoc === "store") movPayload.from_store_id = fromId;
+        if (toLoc === "factory") movPayload.to_factory_id = toId;
+        if (toLoc === "warehouse") movPayload.to_warehouse_id = toId;
+        if (toLoc === "store") movPayload.to_store_id = toId;
 
-        await supabase.from("dispatch_items").insert(itemsToInsert);
-        return newDisp.id;
+        await supabase.from("inventory_movements").insert(movPayload);
       }
 
-      return rpcData;
+      return newDisp.id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["live_dispatches"] });
       queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory_movements"] });
+      queryClient.invalidateQueries({ queryKey: ["boss-dashboard-dispatches-stats-30d"] });
+      queryClient.invalidateQueries({ queryKey: ["store_dispatches_total"] });
     },
   });
 
@@ -269,29 +317,93 @@ export function useDispatches() {
       dispatchId: string;
       notes?: string;
     }) => {
-      // Try RPC first
-      const { data: rpcData, error: rpcErr } = await supabase.rpc(
-        // @ts-ignore
-        "receive_and_accept_dispatch",
-        {
-          p_dispatch_id: dispatchId,
-          p_notes: notes || null,
+      // 1. Obtener datos del despacho e items
+      const { data: dispData, error: fetchErr } = await supabase
+        .from("dispatches")
+        .select(`
+          id,
+          dispatch_number,
+          to_location_type,
+          to_factory_id,
+          to_warehouse_id,
+          to_store_id,
+          dispatch_items (product_id, quantity, unit_value)
+        `)
+        .eq("id", dispatchId)
+        .single();
+
+      if (fetchErr || !dispData) throw fetchErr || new Error("Despacho no encontrado");
+
+      // 2. Actualizar estado del despacho a recibido
+      const { error: updErr } = await supabase
+        .from("dispatches")
+        .update({
+          status: "received",
+          received_at: new Date().toISOString(),
+          received_by: user?.id,
+          updated_at: new Date().toISOString(),
+          notes: notes ? notes : undefined,
+        })
+        .eq("id", dispatchId);
+
+      if (updErr) throw updErr;
+
+      // 3. Incrementar inventario en destino y registrar movimientos de entrada
+      const toLoc = dispData.to_location_type;
+      let destId = "";
+      if (toLoc === "factory") destId = dispData.to_factory_id;
+      if (toLoc === "warehouse") destId = dispData.to_warehouse_id;
+      if (toLoc === "store") destId = dispData.to_store_id;
+
+      for (const it of (dispData.dispatch_items || [])) {
+        const prodId = it.product_id;
+        const qty = Number(it.quantity || 0);
+        const unitVal = Number(it.unit_value || 0);
+
+        let balQuery = supabase
+          .from("inventory_balances")
+          .select("id, quantity")
+          .eq("product_id", prodId)
+          .eq("location_type", toLoc);
+
+        if (toLoc === "factory") balQuery = balQuery.eq("factory_id", destId);
+        else if (toLoc === "warehouse") balQuery = balQuery.eq("warehouse_id", destId);
+        else if (toLoc === "store") balQuery = balQuery.eq("store_id", destId);
+
+        const { data: existingBal } = await balQuery.maybeSingle();
+
+        if (existingBal) {
+          const newQty = Number(existingBal.quantity || 0) + qty;
+          await supabase.from("inventory_balances").update({ quantity: newQty }).eq("id", existingBal.id);
+        } else {
+          const insertPayload: any = {
+            product_id: prodId,
+            location_type: toLoc,
+            quantity: qty,
+          };
+          if (toLoc === "factory") insertPayload.factory_id = destId;
+          if (toLoc === "warehouse") insertPayload.warehouse_id = destId;
+          if (toLoc === "store") insertPayload.store_id = destId;
+
+          await supabase.from("inventory_balances").insert(insertPayload);
         }
-      );
 
-      if (rpcErr) {
-        // Fallback update
-        const { error: updErr } = await supabase
-          .from("dispatches")
-          .update({
-            status: "received",
-            received_at: new Date().toISOString(),
-            received_by: user?.id,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", dispatchId);
+        // Registrar movimiento de entrada
+        const movPayload: any = {
+          product_id: prodId,
+          movement_type: "dispatch_in",
+          quantity: qty,
+          unit_value: unitVal,
+          total_value: qty * unitVal,
+          to_location_type: toLoc,
+          notes: `Recepción de Despacho #${dispData.dispatch_number || ""}`,
+          created_by: user?.id,
+        };
+        if (toLoc === "factory") movPayload.to_factory_id = destId;
+        if (toLoc === "warehouse") movPayload.to_warehouse_id = destId;
+        if (toLoc === "store") movPayload.to_store_id = destId;
 
-        if (updErr) throw updErr;
+        await supabase.from("inventory_movements").insert(movPayload);
       }
 
       return true;
@@ -299,6 +411,9 @@ export function useDispatches() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["live_dispatches"] });
       queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory_movements"] });
+      queryClient.invalidateQueries({ queryKey: ["boss-dashboard-dispatches-stats-30d"] });
+      queryClient.invalidateQueries({ queryKey: ["store_dispatches_total"] });
       queryClient.invalidateQueries({ queryKey: ["notifications"] });
     },
   });

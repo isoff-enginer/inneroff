@@ -65,27 +65,27 @@
 :root {
   --radius: 1.5rem;
 
-  /* Fondo Warm Beige #FAF7F2 */
-  --background: #FAF7F2;
-  --foreground: #18181B;
+  /* Fondo limpio y minimalista */
+  --background: #F8FAFC;
+  --foreground: #0F172A;
   
   /* Tarjetas y superficies */
   --card: #FFFFFF;
-  --card-foreground: #18181B;
+  --card-foreground: #0F172A;
   --popover: #FFFFFF;
-  --popover-foreground: #18181B;
+  --popover-foreground: #0F172A;
 
-  /* Amarillo Soleado #FEE867 */
-  --primary: #FEE867;
-  --primary-foreground: #18181B;
+  /* Primario sobrio y elegante (Slate Obsidian) */
+  --primary: #0F172A;
+  --primary-foreground: #FFFFFF;
 
   /* Secundario y Muted */
-  --secondary: #F1ECE1;
-  --secondary-foreground: #18181B;
-  --muted: #F5F1E8;
-  --muted-foreground: #78716C;
-  --accent: #FEE867;
-  --accent-foreground: #18181B;
+  --secondary: #F1F5F9;
+  --secondary-foreground: #0F172A;
+  --muted: #F1F5F9;
+  --muted-foreground: #64748B;
+  --accent: #0F172A;
+  --accent-foreground: #FFFFFF;
 
   /* Estados */
   --destructive: #EF4444;
@@ -97,17 +97,17 @@
   --info: #3B82F6;
   --info-foreground: #FFFFFF;
 
-  --border: rgba(0, 0, 0, 0.08);
-  --border-strong: rgba(0, 0, 0, 0.16);
-  --input: rgba(0, 0, 0, 0.08);
-  --ring: #18181B;
+  --border: rgba(15, 23, 42, 0.08);
+  --border-strong: rgba(15, 23, 42, 0.16);
+  --input: rgba(15, 23, 42, 0.08);
+  --ring: #0F172A;
 
   /* Sidebar */
-  --sidebar: #FAF7F2;
-  --sidebar-foreground: #18181B;
-  --sidebar-primary: #FEE867;
-  --sidebar-primary-foreground: #18181B;
-  --sidebar-accent: #F1ECE1;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #0F172A;
+  --sidebar-primary: #0F172A;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #F1F5F9;
   --sidebar-accent-foreground: #18181B;
   --sidebar-border: rgba(0, 0, 0, 0.06);
   --sidebar-ring: #18181B;

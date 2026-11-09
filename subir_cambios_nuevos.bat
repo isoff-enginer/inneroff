@@ -3,11 +3,14 @@ echo =========================================
 echo  FORZANDO SUBIDA DE CAMBIOS A LOVABLE
 echo =========================================
 echo.
+echo [0/3] Sincronizando fotos de productos...
+call optimizar_fotos.bat
+echo.
 echo [1/3] Añadiendo todos los archivos modificados...
 git add .
 echo.
 echo [2/3] Creando el commit...
-git commit -m "fix: reparado error critico del crawler de Tanstack Router"
+git commit -m "feat: tiendas unicas Centro y La Usa, optimizacion de fotos de productos, liquidacion 3 grupos"
 echo.
 echo [3/3] Subiendo a GitHub para que Lovable sincronice...
 git push origin main

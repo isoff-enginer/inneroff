@@ -8,17 +8,11 @@ import {
   Package, 
   Edit3, 
   Trash2, 
-  Search, 
-  Check, 
   X, 
-  AlertCircle,
   Sparkles,
-  Layers,
-  ArrowRight,
-  ShieldCheck,
-  Tag
+  Layers
 } from "lucide-react";
-import { useInventoryData, type ProductCategory, type CatalogProduct } from "@/features/inventory/use-inventory-data";
+import { useInventoryData } from "@/features/inventory/use-inventory-data";
 import { formatCurrency } from "@/lib/format";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
 import { Button } from "@/components/ui/button";
@@ -44,7 +38,6 @@ function AdminPage() {
     allProducts,
     categories,
     subcategories,
-    allCategoriesRaw,
     isLoading,
     createCategory,
     updateCategory,
@@ -57,7 +50,6 @@ function AdminPage() {
     isDeletingCategory,
     isCreatingProduct,
     isUpdatingProduct,
-    isDeletingProduct,
   } = useInventoryData();
 
   const [activeTab, setActiveTab] = useState<AdminTab>("products");
@@ -84,13 +76,11 @@ function AdminPage() {
   const [prodSku, setProdSku] = useState("");
   const [prodDesc, setProdDesc] = useState("");
 
-  // Subcategories available for selected category in product modal
   const modalAvailableSubs = useMemo(() => {
     if (!prodCatId) return [];
     return subcategories.filter(s => s.parentId === prodCatId || s.parent_id === prodCatId);
   }, [subcategories, prodCatId]);
 
-  // Open Create Main Category Modal
   const handleOpenCreateCategory = () => {
     setEditingCatId(null);
     setCatName("");
@@ -100,18 +90,16 @@ function AdminPage() {
     setIsCatModalOpen(true);
   };
 
-  // Open Create Subcategory Modal
-  const handleOpenCreateSubcategory = (preselectedParentId?: string) => {
+  const handleOpenCreateSubcategory = (parentId?: string) => {
     setEditingCatId(null);
     setCatName("");
     setCatDesc("");
-    setCatParentId(preselectedParentId || categories[0]?.id || null);
+    setCatParentId(parentId || categories[0]?.id || null);
     setIsSubcategoryMode(true);
     setIsCatModalOpen(true);
   };
 
-  // Open Edit Category / Subcategory Modal
-  const handleOpenEditCategory = (cat: ProductCategory) => {
+  const handleOpenEditCategory = (cat: any) => {
     setEditingCatId(cat.id);
     setCatName(cat.name);
     setCatDesc(cat.description || "");
@@ -120,14 +108,9 @@ function AdminPage() {
     setIsCatModalOpen(true);
   };
 
-  // Save Category / Subcategory
   const handleSaveCategory = async () => {
     if (!catName.trim()) {
-      toast.error("Ingresa el nombre");
-      return;
-    }
-    if (isSubcategoryMode && !catParentId) {
-      toast.error("Selecciona una categoría principal para la subcategoría");
+      toast.error("El nombre no puede estar vacío");
       return;
     }
 
@@ -135,18 +118,18 @@ function AdminPage() {
       if (editingCatId) {
         await updateCategory({
           id: editingCatId,
-          name: catName,
-          description: catDesc,
-          parentId: isSubcategoryMode ? catParentId : null,
+          name: catName.trim(),
+          description: catDesc.trim() || null,
+          parent_id: isSubcategoryMode ? catParentId : null,
         });
-        toast.success("Categoría actualizada correctamente");
+        toast.success("Categoría actualizada con éxito");
       } else {
         await createCategory({
-          name: catName,
-          description: catDesc,
-          parentId: isSubcategoryMode ? catParentId : null,
+          name: catName.trim(),
+          description: catDesc.trim() || null,
+          parent_id: isSubcategoryMode ? catParentId : null,
         });
-        toast.success(`${isSubcategoryMode ? "Subcategoría" : "Categoría"} creada exitosamente`);
+        toast.success("Categoría creada con éxito");
       }
       setIsCatModalOpen(false);
     } catch (e: any) {
@@ -154,18 +137,16 @@ function AdminPage() {
     }
   };
 
-  // Delete Category
   const handleDeleteCategory = async (id: string, name: string) => {
-    if (!confirm(`¿Eliminar la categoría/subcategoría "${name}"?`)) return;
+    if (!confirm(`¿Eliminar la categoría "${name}"?`)) return;
     try {
       await deleteCategory(id);
-      toast.success("Eliminada correctamente");
+      toast.success("Categoría eliminada con éxito");
     } catch (e: any) {
-      toast.error(e.message || "Error al eliminar");
+      toast.error(e.message || "Error al eliminar categoría");
     }
   };
 
-  // Open Create Product Modal
   const handleOpenCreateProduct = () => {
     setEditingProdId(null);
     setProdName("");
@@ -179,7 +160,6 @@ function AdminPage() {
     setIsProdModalOpen(true);
   };
 
-  // Open Edit Product Modal
   const handleOpenEditProduct = (prod: any) => {
     setEditingProdId(prod.id);
     setProdName(prod.name);
@@ -193,14 +173,13 @@ function AdminPage() {
     setIsProdModalOpen(true);
   };
 
-  // Save Product
   const handleSaveProduct = async () => {
     if (!prodName.trim()) {
-      toast.error("Ingresa el nombre del producto");
+      toast.error("El nombre del producto es requerido");
       return;
     }
     if (!prodCatId) {
-      toast.error("Selecciona una categoría principal");
+      toast.error("Debes seleccionar una categoría");
       return;
     }
 
@@ -208,26 +187,26 @@ function AdminPage() {
       if (editingProdId) {
         await updateProduct({
           id: editingProdId,
-          name: prodName,
+          name: prodName.trim(),
           category_id: prodCatId,
           subcategory_id: prodSubcatId || null,
           unit_value: Number(prodUnitPrice) || 0,
           cost_value: Number(prodCostPrice) || 0,
           unit_name: prodUnitName,
-          sku: prodSku,
-          description: prodDesc,
+          sku: prodSku.trim() || undefined,
+          description: prodDesc.trim() || undefined,
         });
-        toast.success("Producto actualizado correctamente");
+        toast.success("Producto actualizado");
       } else {
         await createProduct({
-          name: prodName,
+          name: prodName.trim(),
           category_id: prodCatId,
           subcategory_id: prodSubcatId || null,
           unit_value: Number(prodUnitPrice) || 0,
           cost_value: Number(prodCostPrice) || 0,
           unit_name: prodUnitName,
-          sku: prodSku,
-          description: prodDesc,
+          sku: prodSku.trim() || undefined,
+          description: prodDesc.trim() || undefined,
         });
         toast.success("Producto creado exitosamente");
       }
@@ -237,7 +216,6 @@ function AdminPage() {
     }
   };
 
-  // Delete Product
   const handleDeleteProduct = async (id: string, name: string) => {
     if (!confirm(`¿Eliminar el producto "${name}" del catálogo?`)) return;
     try {
@@ -248,68 +226,87 @@ function AdminPage() {
     }
   };
 
-  // Initial Seed for Verde, Blanco, Flores, Rojas
   const handleSeedInitialCatalog = async () => {
-    if (!confirm("¿Deseas inicializar las 4 categorías (Verde, Blanco, Flores, Rojas) y los subproductos base?")) return;
+    if (!confirm("¿Deseas inicializar la estructura exacta de 3 grupos (Blanco, Verde, Productos adicionales) y sus productos?")) return;
 
     try {
-      toast.info("Configurando catálogo...");
+      toast.info("Configurando estructura de catálogo...");
       
-      // 1. Categoría Verde
-      let catVerde = categories.find(c => c.name.toLowerCase() === "verde");
-      if (!catVerde) {
-        await createCategory({ name: "Verde", description: "Productos Categoría Verde" });
-      }
-      
-      // 2. Categoría Blanco
+      // 1. Blanco
       let catBlanco = categories.find(c => c.name.toLowerCase() === "blanco");
       if (!catBlanco) {
-        await createCategory({ name: "Blanco", description: "Productos Categoría Blanco" });
+        await createCategory({ name: "Blanco", description: "Categoría Blanco" });
       }
 
-      // 3. Categoría Flores
-      let catFlores = categories.find(c => c.name.toLowerCase() === "flores");
-      if (!catFlores) {
-        await createCategory({ name: "Flores", description: "Productos Categoría Flores" });
+      // 2. Verde
+      let catVerde = categories.find(c => c.name.toLowerCase() === "verde");
+      if (!catVerde) {
+        await createCategory({ name: "Verde", description: "Categoría Verde" });
       }
-      const existingFlorProd = allProducts.find((p: any) => p.name.toLowerCase() === "flores");
-      if (!existingFlorProd && catFlores) {
-        await createProduct({
-          name: "Flores",
-          category_id: catFlores.id,
-          unit_value: 8000,
-          cost_value: 0,
-          unit_name: "Unidad",
-          sku: "FLO-UNI-01",
-          description: "Unidad: 8.000"
+
+      // 3. Productos adicionales
+      let catAdic = categories.find(c => c.name.toLowerCase().includes("adicional"));
+      if (!catAdic) {
+        const newCat = await createCategory({ name: "Productos adicionales", description: "Categoría Productos adicionales" });
+        catAdic = newCat as any;
+      }
+
+      // Asegurar productos adicionales a $8.000 cada uno:
+      // Rojas, Flores, Baldes, Pre-roll
+      if (catAdic?.id) {
+        const ensureAdicProduct = async (name: string, sku: string) => {
+          const exists = allProducts.find((p: any) => p.name.toLowerCase().trim() === name.toLowerCase().trim());
+          if (!exists) {
+            await createProduct({
+              name,
+              category_id: catAdic.id,
+              unit_value: 8000,
+              cost_value: 0,
+              unit_name: "Unidad",
+              sku,
+              description: `Unidad: 8.000 (${name})`
+            });
+          }
+        };
+
+        await ensureAdicProduct("Rojas", "ADI-ROJ-01");
+        await ensureAdicProduct("Flores", "ADI-FLO-01");
+        await ensureAdicProduct("Baldes", "ADI-BAL-01");
+        await ensureAdicProduct("Pre-roll", "ADI-PRE-01");
+      }
+
+      // 4. Asegurar tiendas únicas: Centro y La Usa
+      const { data: existingStores } = await supabase.from("stores").select("id, name");
+      const hasCentro = (existingStores || []).some((s: any) => s.name?.toLowerCase() === "centro");
+      const hasLaUsa = (existingStores || []).some((s: any) => s.name?.toLowerCase().includes("usa"));
+
+      if (!hasCentro) {
+        await supabase.from("stores").insert({
+          name: "Centro",
+          code: "STR-CEN-01",
+          status: "active",
+          notes: "Tienda Centro"
+        });
+      }
+      if (!hasLaUsa) {
+        await supabase.from("stores").insert({
+          name: "La Usa",
+          code: "STR-USA-01",
+          status: "active",
+          notes: "Tienda La Usa"
         });
       }
 
-      // 4. Categoría Rojas
-      let catRojas = categories.find(c => c.name.toLowerCase() === "rojas");
-      if (!catRojas) {
-        await createCategory({ name: "Rojas", description: "Productos Categoría Rojas" });
-      }
-      const existingRojaProd = allProducts.find((p: any) => p.name.toLowerCase() === "rojas");
-      if (!existingRojaProd && catRojas) {
-        await createProduct({
-          name: "Rojas",
-          category_id: catRojas.id,
-          unit_value: 8000,
-          cost_value: 0,
-          unit_name: "Unidad",
-          sku: "ROJ-UNI-01",
-          description: "Unidad: 8.000"
-        });
-      }
-
-      toast.success("Categorías Verde, Blanco, Flores ($8.000) y Rojas ($8.000) configuradas exitosamente.");
+      queryClient.invalidateQueries({ queryKey: ["product_categories_hierarchical"] });
+      queryClient.invalidateQueries({ queryKey: ["all_products_catalog"] });
+      queryClient.invalidateQueries({ queryKey: ["sales_stores_list"] });
+      queryClient.invalidateQueries({ queryKey: ["operational_locations"] });
+      toast.success("Catálogo y tiendas (Centro y La Usa) configuradas exitosamente.");
     } catch (e: any) {
       toast.error(e.message || "Error al inicializar");
     }
   };
 
-  // Limpiar ventas y recaudos ficticios
   const handleClearFictitiousSales = async () => {
     if (!confirm("¿Eliminar todas las ventas y recaudos ficticios de prueba? El total se reiniciará a $0.")) return;
 
@@ -329,7 +326,6 @@ function AdminPage() {
     }
   };
 
-  // Filtered Products
   const filteredProducts = useMemo(() => {
     return allProducts.filter((p: any) => {
       const matchesSearch = `${p.name} ${p.sku || ""} ${p.product_categories?.name || ""}`
@@ -342,29 +338,29 @@ function AdminPage() {
   }, [allProducts, search, filterCatId]);
 
   return (
-    <div className="min-h-screen bg-[#FAF7F2] text-stone-900 pb-28 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28 font-sans">
       <div className="mx-auto max-w-md px-5 pt-3 space-y-4">
         
         {/* HEADER */}
         <header className="flex items-center justify-between py-2">
           <button 
             onClick={() => navigate({ to: "/dashboard" })}
-            className="flex size-10 items-center justify-center rounded-full bg-white border border-stone-200/80 shadow-2xs text-stone-700 active:scale-95 transition-transform"
+            className="flex size-10 items-center justify-center rounded-full bg-white border border-slate-200/80 shadow-xs text-slate-700 active:scale-95 transition-transform"
           >
             <ChevronLeft className="size-5" />
           </button>
 
           <div className="flex flex-col items-center">
-            <h1 className="text-lg font-black tracking-tight text-stone-950">
+            <h1 className="text-lg font-black tracking-tight text-slate-950">
               Panel Administrativo
             </h1>
-            <span className="text-[11px] font-bold text-stone-400">Catálogo & Categorías</span>
+            <span className="text-[11px] font-bold text-slate-400">Catálogo & Categorías</span>
           </div>
 
           <div className="flex items-center gap-1.5">
             <button 
               onClick={handleClearFictitiousSales}
-              className="flex size-10 items-center justify-center rounded-full bg-rose-50 border border-rose-200 shadow-2xs text-rose-600 active:scale-95 transition-transform"
+              className="flex size-10 items-center justify-center rounded-full bg-rose-50 border border-rose-200 shadow-xs text-rose-600 active:scale-95 transition-transform"
               title="Borrar ventas ficticias (Reiniciar a $0)"
             >
               <Trash2 className="size-4" />
@@ -372,22 +368,22 @@ function AdminPage() {
 
             <button 
               onClick={handleSeedInitialCatalog}
-              className="flex size-10 items-center justify-center rounded-full bg-white border border-stone-200/80 shadow-2xs text-stone-700 active:scale-95 transition-transform"
-              title="Inicializar Verde, Blanco, Flores y Rojas"
+              className="flex size-10 items-center justify-center rounded-full bg-white border border-slate-200/80 shadow-xs text-slate-700 active:scale-95 transition-transform"
+              title="Inicializar Blanco, Verde y Productos adicionales"
             >
-              <Sparkles className="size-4 text-amber-500" />
+              <Sparkles className="size-4 text-slate-800" />
             </button>
           </div>
         </header>
 
         {/* TABS SELECTOR */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white border border-stone-200/80 shadow-2xs">
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
           <button
             onClick={() => setActiveTab("products")}
             className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-black transition-all ${
               activeTab === "products" 
-                ? "bg-[#FEE867] text-stone-950 shadow-xs" 
-                : "text-stone-500 hover:text-stone-900"
+                ? "bg-slate-900 text-white shadow-xs" 
+                : "text-slate-500 hover:text-slate-900"
             }`}
           >
             <Package className="size-4" />
@@ -398,8 +394,8 @@ function AdminPage() {
             onClick={() => setActiveTab("categories")}
             className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-black transition-all ${
               activeTab === "categories" 
-                ? "bg-[#FEE867] text-stone-950 shadow-xs" 
-                : "text-stone-500 hover:text-stone-900"
+                ? "bg-slate-900 text-white shadow-xs" 
+                : "text-slate-500 hover:text-slate-900"
             }`}
           >
             <Folder className="size-4" />
@@ -410,8 +406,8 @@ function AdminPage() {
             onClick={() => setActiveTab("subcategories")}
             className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-black transition-all ${
               activeTab === "subcategories" 
-                ? "bg-[#FEE867] text-stone-950 shadow-xs" 
-                : "text-stone-500 hover:text-stone-900"
+                ? "bg-slate-900 text-white shadow-xs" 
+                : "text-slate-500 hover:text-slate-900"
             }`}
           >
             <FolderTree className="size-4" />
@@ -419,23 +415,20 @@ function AdminPage() {
           </button>
         </div>
 
-        {/* ======================================================== */}
-        {/* TAB 1: PRODUCTOS                                         */}
-        {/* ======================================================== */}
+        {/* TAB 1: PRODUCTOS */}
         {activeTab === "products" && (
           <div className="space-y-3">
-            {/* Action Bar */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <input 
                   type="text" 
-                  className="block w-full pl-4 pr-10 py-3 rounded-2xl bg-white border border-stone-200/80 text-[13px] text-stone-900 placeholder:text-stone-400 outline-none focus:ring-2 focus:ring-stone-900 shadow-2xs"
+                  className="block w-full pl-4 pr-10 py-3 rounded-2xl bg-white border border-slate-200/80 text-[13px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-slate-900 shadow-xs"
                   placeholder="Buscar producto..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
                 {search && (
-                  <button onClick={() => setSearch("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-stone-400">
+                  <button onClick={() => setSearch("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
                     <X className="size-4" />
                   </button>
                 )}
@@ -443,7 +436,7 @@ function AdminPage() {
 
               <Button
                 onClick={handleOpenCreateProduct}
-                className="h-12 px-4 rounded-2xl bg-stone-950 text-white font-black text-[13px] hover:bg-stone-900 shadow-sm shrink-0"
+                className="h-12 px-4 rounded-2xl bg-slate-900 text-white font-black text-[13px] hover:bg-slate-800 shadow-sm shrink-0"
               >
                 <Plus className="size-4 mr-1 stroke-[3]" /> Crear
               </Button>
@@ -453,7 +446,7 @@ function AdminPage() {
             <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
               <button 
                 onClick={() => setFilterCatId("all")}
-                className={`whitespace-nowrap px-3.5 py-1.5 rounded-xl text-[12px] font-bold transition-colors ${filterCatId === "all" ? 'bg-stone-900 text-white' : 'bg-white border border-stone-200 text-stone-600'}`}
+                className={`whitespace-nowrap px-3.5 py-1.5 rounded-xl text-[12px] font-bold transition-colors ${filterCatId === "all" ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}
               >
                 Todos ({allProducts.length})
               </button>
@@ -461,26 +454,24 @@ function AdminPage() {
                 <button 
                   key={c.id}
                   onClick={() => setFilterCatId(c.id)}
-                  className={`whitespace-nowrap px-3.5 py-1.5 rounded-xl text-[12px] font-bold transition-colors ${filterCatId === c.id ? 'bg-[#FEE867] text-stone-950' : 'bg-white border border-stone-200 text-stone-600'}`}
+                  className={`whitespace-nowrap px-3.5 py-1.5 rounded-xl text-[12px] font-bold transition-colors ${filterCatId === c.id ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-600'}`}
                 >
                   {c.name}
                 </button>
               ))}
             </div>
 
-            {/* Products List */}
             {isLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map(i => <div key={i} className="h-20 bg-white/60 rounded-[24px] animate-pulse" />)}
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-stone-400 bg-white rounded-[32px] border border-stone-200/80 p-6">
+              <div className="flex flex-col items-center justify-center py-16 text-slate-400 bg-white rounded-[32px] border border-slate-200/80 p-6">
                 <Package className="size-12 mb-3 opacity-30" />
-                <p className="text-[15px] font-bold text-stone-700">Sin productos registrados</p>
-                <p className="text-[12px] text-stone-400 text-center mt-1">Crea tu primer producto con el botón Crear superior</p>
+                <p className="text-[15px] font-bold text-slate-700">Sin productos registrados</p>
                 <Button 
                   onClick={handleOpenCreateProduct} 
-                  className="mt-4 bg-[#FEE867] text-stone-950 font-black rounded-xl text-xs h-10 px-4"
+                  className="mt-4 bg-slate-900 text-white font-black rounded-xl text-xs h-10 px-4 hover:bg-slate-800"
                 >
                   Crear Producto Ahora
                 </Button>
@@ -490,33 +481,33 @@ function AdminPage() {
                 {filteredProducts.map((p: any) => (
                   <div 
                     key={p.id}
-                    className="p-4 rounded-[26px] bg-white border border-stone-200/80 shadow-2xs flex items-center justify-between"
+                    className="p-4 rounded-[26px] bg-white border border-slate-200/80 shadow-xs flex items-center justify-between"
                   >
                     <div className="flex flex-col gap-0.5">
                       <div className="flex items-center gap-2">
-                        <span className="text-[15px] font-black text-stone-950">{p.name}</span>
-                        <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-[#FAF7F2] border border-stone-200 text-stone-700 uppercase">
+                        <span className="text-[15px] font-black text-slate-950">{p.name}</span>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-100 border border-slate-200 text-slate-700 uppercase">
                           {p.product_categories?.name || "General"}
                         </span>
                       </div>
 
-                      <div className="flex items-center gap-3 text-[12px] font-bold text-stone-600 mt-1">
-                        <span className="text-stone-900">Venta: {formatCurrency(p.unit_value || 0)}</span>
+                      <div className="flex items-center gap-3 text-[12px] font-bold text-slate-600 mt-1">
+                        <span className="text-slate-900">Venta: {formatCurrency(p.unit_value || 0)}</span>
                         {p.cost_value > 0 && (
-                          <span className="text-stone-400 font-medium">Costo: {formatCurrency(p.cost_value)}</span>
+                          <span className="text-slate-400 font-medium">Costo: {formatCurrency(p.cost_value)}</span>
                         )}
-                        <span className="text-stone-400 text-[11px] font-medium">{p.unit_name || "unid"}</span>
+                        <span className="text-slate-400 text-[11px] font-medium">{p.unit_name || "unid"}</span>
                       </div>
 
                       {p.sku && (
-                        <span className="text-[10px] text-stone-400 font-mono mt-0.5">SKU: {p.sku}</span>
+                        <span className="text-[10px] text-slate-400 font-mono mt-0.5">SKU: {p.sku}</span>
                       )}
                     </div>
 
                     <div className="flex items-center gap-1.5">
                       <button 
                         onClick={() => handleOpenEditProduct(p)}
-                        className="size-9 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 active:scale-95"
+                        className="size-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 active:scale-95"
                         title="Editar Producto"
                       >
                         <Edit3 className="size-4" />
@@ -537,33 +528,30 @@ function AdminPage() {
           </div>
         )}
 
-        {/* ======================================================== */}
-        {/* TAB 2: CATEGORÍAS PRINCIPALES                           */}
-        {/* ======================================================== */}
+        {/* TAB 2: CATEGORÍAS PRINCIPALES */}
         {activeTab === "categories" && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-[15px] font-black text-stone-950">Categorías Principales</h2>
-                <p className="text-[12px] text-stone-500">Ejemplo: Verde, Blanco, etc.</p>
+                <h2 className="text-[15px] font-black text-slate-950">Categorías Principales</h2>
+                <p className="text-[12px] text-slate-500">Blanco, Verde y Productos adicionales</p>
               </div>
 
               <Button
                 onClick={handleOpenCreateCategory}
-                className="h-11 px-4 rounded-2xl bg-stone-950 text-white font-black text-[13px] hover:bg-stone-900 shadow-sm"
+                className="h-11 px-4 rounded-2xl bg-slate-900 text-white font-black text-[13px] hover:bg-slate-800 shadow-sm"
               >
                 <Plus className="size-4 mr-1 stroke-[3]" /> Nueva Categoría
               </Button>
             </div>
 
             {categories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[32px] border border-stone-200/80 p-6 text-stone-400">
+              <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[32px] border border-slate-200/80 p-6 text-slate-400">
                 <Folder className="size-12 mb-3 opacity-30" />
-                <p className="text-[15px] font-bold text-stone-700">Sin categorías creadas</p>
-                <p className="text-[12px] text-stone-400 text-center mt-1">Crea categorías para organizar tus productos</p>
+                <p className="text-[15px] font-bold text-slate-700">Sin categorías creadas</p>
                 <Button 
                   onClick={handleOpenCreateCategory} 
-                  className="mt-4 bg-[#FEE867] text-stone-950 font-black rounded-xl text-xs h-10 px-4"
+                  className="mt-4 bg-slate-900 text-white font-black rounded-xl text-xs h-10 px-4"
                 >
                   Crear Categoría
                 </Button>
@@ -573,17 +561,17 @@ function AdminPage() {
                 {categories.map((c) => (
                   <div 
                     key={c.id}
-                    className="p-4 rounded-[26px] bg-white border border-stone-200/80 shadow-2xs flex items-center justify-between"
+                    className="p-4 rounded-[26px] bg-white border border-slate-200/80 shadow-xs flex items-center justify-between"
                   >
                     <div className="flex flex-col">
                       <div className="flex items-center gap-2">
-                        <Folder className="size-4 text-[#F28C57]" />
-                        <span className="text-[16px] font-black text-stone-950">{c.name}</span>
+                        <Folder className="size-4 text-slate-700" />
+                        <span className="text-[16px] font-black text-slate-950">{c.name}</span>
                       </div>
                       {c.description && (
-                        <span className="text-[12px] text-stone-500 mt-0.5">{c.description}</span>
+                        <span className="text-[12px] text-slate-500 mt-0.5">{c.description}</span>
                       )}
-                      <span className="text-[11px] font-bold text-stone-400 mt-1">
+                      <span className="text-[11px] font-bold text-slate-400 mt-1">
                         {(c.subcategories || []).length} subcategorías • {c.productCount || 0} productos
                       </span>
                     </div>
@@ -591,7 +579,7 @@ function AdminPage() {
                     <div className="flex items-center gap-1.5">
                       <button 
                         onClick={() => handleOpenCreateSubcategory(c.id)}
-                        className="size-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-800 hover:bg-amber-100 active:scale-95"
+                        className="size-9 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-800 hover:bg-slate-200 active:scale-95"
                         title="Añadir Subcategoría a esta categoría"
                       >
                         <Plus className="size-4" />
@@ -599,7 +587,7 @@ function AdminPage() {
 
                       <button 
                         onClick={() => handleOpenEditCategory(c)}
-                        className="size-9 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 active:scale-95"
+                        className="size-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 active:scale-95"
                         title="Editar Categoría"
                       >
                         <Edit3 className="size-4" />
@@ -620,33 +608,30 @@ function AdminPage() {
           </div>
         )}
 
-        {/* ======================================================== */}
-        {/* TAB 3: SUBCATEGORÍAS                                    */}
-        {/* ======================================================== */}
+        {/* TAB 3: SUBCATEGORÍAS */}
         {activeTab === "subcategories" && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-[15px] font-black text-stone-950">Subcategorías</h2>
-                <p className="text-[12px] text-stone-500">Ejemplo: Gordos, Largos, Minis, Mamita...</p>
+                <h2 className="text-[15px] font-black text-slate-950">Subcategorías</h2>
+                <p className="text-[12px] text-slate-500">Mamitas, Tornillo, Lisos, Largos, Minis, etc.</p>
               </div>
 
               <Button
                 onClick={() => handleOpenCreateSubcategory()}
-                className="h-11 px-4 rounded-2xl bg-stone-950 text-white font-black text-[13px] hover:bg-stone-900 shadow-sm"
+                className="h-11 px-4 rounded-2xl bg-slate-900 text-white font-black text-[13px] hover:bg-slate-800 shadow-sm"
               >
                 <Plus className="size-4 mr-1 stroke-[3]" /> Nueva Subcategoría
               </Button>
             </div>
 
             {subcategories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[32px] border border-stone-200/80 p-6 text-stone-400">
+              <div className="flex flex-col items-center justify-center py-16 bg-white rounded-[32px] border border-slate-200/80 p-6 text-slate-400">
                 <FolderTree className="size-12 mb-3 opacity-30" />
-                <p className="text-[15px] font-bold text-stone-700">Sin subcategorías creadas</p>
-                <p className="text-[12px] text-stone-400 text-center mt-1">Crea subcategorías vinculadas a una categoría principal</p>
+                <p className="text-[15px] font-bold text-slate-700">Sin subcategorías creadas</p>
                 <Button 
                   onClick={() => handleOpenCreateSubcategory()} 
-                  className="mt-4 bg-[#FEE867] text-stone-950 font-black rounded-xl text-xs h-10 px-4"
+                  className="mt-4 bg-slate-900 text-white font-black rounded-xl text-xs h-10 px-4"
                 >
                   Crear Subcategoría
                 </Button>
@@ -658,24 +643,24 @@ function AdminPage() {
                   return (
                     <div 
                       key={s.id}
-                      className="p-4 rounded-[26px] bg-white border border-stone-200/80 shadow-2xs flex items-center justify-between"
+                      className="p-4 rounded-[26px] bg-white border border-slate-200/80 shadow-xs flex items-center justify-between"
                     >
                       <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                          <span className="text-[15px] font-black text-stone-950">{s.name}</span>
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-50 text-amber-900 border border-amber-200/60 uppercase">
+                          <span className="text-[15px] font-black text-slate-950">{s.name}</span>
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-slate-100 text-slate-800 border border-slate-200 uppercase">
                             Padre: {parentName}
                           </span>
                         </div>
                         {s.description && (
-                          <span className="text-[12px] text-stone-500 mt-0.5">{s.description}</span>
+                          <span className="text-[12px] text-slate-500 mt-0.5">{s.description}</span>
                         )}
                       </div>
 
                       <div className="flex items-center gap-1.5">
                         <button 
                           onClick={() => handleOpenEditCategory(s)}
-                          className="size-9 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center text-stone-700 hover:bg-stone-100 active:scale-95"
+                          className="size-9 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-700 hover:bg-slate-100 active:scale-95"
                           title="Editar Subcategoría"
                         >
                           <Edit3 className="size-4" />
@@ -703,11 +688,11 @@ function AdminPage() {
       <Drawer open={isCatModalOpen} onOpenChange={setIsCatModalOpen}>
         <DrawerContent className="bg-white border-t-0 px-5 pb-8">
           <div className="flex flex-col">
-            <div className="py-3 border-b border-stone-100 mb-3 flex items-center justify-between">
-              <h2 className="text-xl font-black text-stone-900">
+            <div className="py-3 border-b border-slate-100 mb-3 flex items-center justify-between">
+              <h2 className="text-xl font-black text-slate-900">
                 {editingCatId ? "Editar" : "Crear"} {isSubcategoryMode ? "Subcategoría" : "Categoría"}
               </h2>
-              <button onClick={() => setIsCatModalOpen(false)} className="text-stone-400">
+              <button onClick={() => setIsCatModalOpen(false)} className="text-slate-400">
                 <X className="size-5" />
               </button>
             </div>
@@ -715,11 +700,11 @@ function AdminPage() {
             <div className="space-y-3.5">
               {isSubcategoryMode && (
                 <div>
-                  <label className="text-[12px] font-bold text-stone-500 block mb-1">Categoría Principal Padre *</label>
+                  <label className="text-[12px] font-bold text-slate-500 block mb-1">Categoría Principal Padre *</label>
                   <select 
                     value={catParentId || ""} 
                     onChange={(e) => setCatParentId(e.target.value)}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-bold text-stone-900 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[14px] font-bold text-slate-900 outline-none"
                   >
                     <option value="">Selecciona categoría principal</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -728,31 +713,31 @@ function AdminPage() {
               )}
 
               <div>
-                <label className="text-[12px] font-bold text-stone-500 block mb-1">Nombre *</label>
+                <label className="text-[12px] font-bold text-slate-500 block mb-1">Nombre *</label>
                 <input 
                   type="text" 
                   value={catName} 
                   onChange={(e) => setCatName(e.target.value)}
-                  placeholder={isSubcategoryMode ? "Ej. Gordos, Minis, Mamita..." : "Ej. Verde, Blanco..."}
-                  className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-bold text-stone-900 outline-none"
+                  placeholder={isSubcategoryMode ? "Ej. Mamitas, Tornillo, Lisos..." : "Ej. Blanco, Verde, Productos adicionales..."}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[14px] font-bold text-slate-900 outline-none"
                 />
               </div>
 
               <div>
-                <label className="text-[12px] font-bold text-stone-500 block mb-1">Descripción (Opcional)</label>
+                <label className="text-[12px] font-bold text-slate-500 block mb-1">Descripción (Opcional)</label>
                 <input 
                   type="text" 
                   value={catDesc} 
                   onChange={(e) => setCatDesc(e.target.value)}
                   placeholder="Descripción corta..."
-                  className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-medium text-stone-900 outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[14px] font-medium text-slate-900 outline-none"
                 />
               </div>
 
               <Button 
                 onClick={handleSaveCategory}
                 disabled={isCreatingCategory || isUpdatingCategory}
-                className="w-full h-14 rounded-2xl font-black text-[15px] bg-[#FEE867] text-stone-950 hover:bg-[#FEE867]/90 mt-2"
+                className="w-full h-14 rounded-2xl font-black text-[15px] bg-slate-900 text-white hover:bg-slate-800 mt-2"
               >
                 {isCreatingCategory || isUpdatingCategory ? "Guardando..." : "Guardar Categoría"}
               </Button>
@@ -765,37 +750,37 @@ function AdminPage() {
       <Drawer open={isProdModalOpen} onOpenChange={setIsProdModalOpen}>
         <DrawerContent className="bg-white border-t-0 px-5 pb-8 max-h-[90vh] overflow-y-auto">
           <div className="flex flex-col">
-            <div className="py-3 border-b border-stone-100 mb-3 flex items-center justify-between">
-              <h2 className="text-xl font-black text-stone-900">
+            <div className="py-3 border-b border-slate-100 mb-3 flex items-center justify-between">
+              <h2 className="text-xl font-black text-slate-900">
                 {editingProdId ? "Editar Producto" : "Nuevo Producto"}
               </h2>
-              <button onClick={() => setIsProdModalOpen(false)} className="text-stone-400">
+              <button onClick={() => setIsProdModalOpen(false)} className="text-slate-400">
                 <X className="size-5" />
               </button>
             </div>
 
             <div className="space-y-3">
               <div>
-                <label className="text-[12px] font-bold text-stone-500 block mb-1">Nombre del Producto *</label>
+                <label className="text-[12px] font-bold text-slate-500 block mb-1">Nombre del Producto *</label>
                 <input 
                   type="text" 
                   value={prodName} 
                   onChange={(e) => setProdName(e.target.value)}
-                  placeholder="Ej. Balón Gordo, Mamita, Tornillo..."
-                  className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-bold text-stone-900 outline-none"
+                  placeholder="Ej. Mamitas, Tornillo, Lisos..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[14px] font-bold text-slate-900 outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[12px] font-bold text-stone-500 block mb-1">Categoría Principal *</label>
+                  <label className="text-[12px] font-bold text-slate-500 block mb-1">Categoría Principal *</label>
                   <select 
                     value={prodCatId} 
                     onChange={(e) => {
                       setProdCatId(e.target.value);
                       setProdSubcatId("");
                     }}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[13px] font-bold text-stone-900 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[13px] font-bold text-slate-900 outline-none"
                   >
                     <option value="">Seleccionar</option>
                     {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -803,12 +788,12 @@ function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="text-[12px] font-bold text-stone-500 block mb-1">Subcategoría</label>
+                  <label className="text-[12px] font-bold text-slate-500 block mb-1">Subcategoría</label>
                   <select 
                     value={prodSubcatId} 
                     onChange={(e) => setProdSubcatId(e.target.value)}
                     disabled={modalAvailableSubs.length === 0}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[13px] font-bold text-stone-900 outline-none disabled:opacity-50"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[13px] font-bold text-slate-900 outline-none disabled:opacity-50"
                   >
                     <option value="">(Ninguna)</option>
                     {modalAvailableSubs.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -818,35 +803,35 @@ function AdminPage() {
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[12px] font-bold text-stone-500 block mb-1">Precio Venta Unitario ($) *</label>
+                  <label className="text-[12px] font-bold text-slate-500 block mb-1">Precio Venta Unitario ($) *</label>
                   <input 
                     type="number" 
                     value={prodUnitPrice} 
                     onChange={(e) => setProdUnitPrice(e.target.value)}
                     placeholder="Ej. 3400"
-                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-bold text-stone-900 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[14px] font-bold text-slate-900 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-[12px] font-bold text-stone-500 block mb-1">Costo Proveedor ($)</label>
+                  <label className="text-[12px] font-bold text-slate-500 block mb-1">Costo Proveedor ($)</label>
                   <input 
                     type="number" 
                     value={prodCostPrice} 
                     onChange={(e) => setProdCostPrice(e.target.value)}
                     placeholder="Ej. 17000"
-                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[14px] font-bold text-stone-900 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[14px] font-bold text-slate-900 outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="text-[12px] font-bold text-stone-500 block mb-1">Tipo de Unidad</label>
+                  <label className="text-[12px] font-bold text-slate-500 block mb-1">Tipo de Unidad</label>
                   <select 
                     value={prodUnitName} 
                     onChange={(e) => setProdUnitName(e.target.value)}
-                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[13px] font-bold text-stone-900 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[13px] font-bold text-slate-900 outline-none"
                   >
                     <option value="Unidad">Unidad</option>
                     <option value="Balón">Balón</option>
@@ -858,32 +843,32 @@ function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="text-[12px] font-bold text-stone-500 block mb-1">SKU / Código</label>
+                  <label className="text-[12px] font-bold text-slate-500 block mb-1">SKU / Código</label>
                   <input 
                     type="text" 
                     value={prodSku} 
                     onChange={(e) => setProdSku(e.target.value)}
-                    placeholder="Ej. BAL-GOR-01"
-                    className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[13px] font-bold text-stone-900 outline-none uppercase"
+                    placeholder="Ej. VER-LIS-01"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[13px] font-bold text-slate-900 outline-none uppercase"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-[12px] font-bold text-stone-500 block mb-1">Descripción</label>
+                <label className="text-[12px] font-bold text-slate-500 block mb-1">Descripción</label>
                 <input 
                   type="text" 
                   value={prodDesc} 
                   onChange={(e) => setProdDesc(e.target.value)}
                   placeholder="Detalles adicionales..."
-                  className="w-full bg-stone-50 border border-stone-200 rounded-2xl p-3.5 text-[13px] font-medium text-stone-900 outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3.5 text-[13px] font-medium text-slate-900 outline-none"
                 />
               </div>
 
               <Button 
                 onClick={handleSaveProduct}
                 disabled={isCreatingProduct || isUpdatingProduct}
-                className="w-full h-14 rounded-2xl font-black text-[15px] bg-[#FEE867] text-stone-950 hover:bg-[#FEE867]/90 mt-2"
+                className="w-full h-14 rounded-2xl font-black text-[15px] bg-slate-900 text-white hover:bg-slate-800 mt-2"
               >
                 {isCreatingProduct || isUpdatingProduct ? "Guardando..." : "Guardar Producto"}
               </Button>

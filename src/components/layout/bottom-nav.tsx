@@ -15,7 +15,7 @@ export function BottomNav() {
             to={item.to}
             className="flex flex-col items-center justify-center size-11 rounded-full text-stone-500 transition-all hover:text-stone-900"
             activeProps={{
-              className: "!bg-[#FEE867] !text-stone-950 font-bold shadow-xs scale-105",
+              className: "!bg-slate-900 !text-white font-bold shadow-xs scale-105",
               "aria-current": "page"
             }}
           >
