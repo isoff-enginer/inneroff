@@ -181,10 +181,13 @@ function InventoryPage() {
     try {
       const isEntry = actionType === "in";
       await addMovement({
-        productId: detailProduct.productId,
+        productId: detailProduct.productId || detailProduct.id,
+        type: isEntry ? "in" : "out",
+        movementType: isEntry ? "adjustment_in" : "adjustment_out",
         locationType: detailProduct.locationType,
         locationId: detailProduct.locationId,
-        movementType: isEntry ? "adjustment_in" : "adjustment_out",
+        currentBalanceId: detailProduct.id,
+        currentQuantity: detailProduct.quantity,
         quantity: actionQty,
         notes: isEntry ? "Entrada manual de inventario" : "Salida manual de inventario",
       });

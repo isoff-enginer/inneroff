@@ -682,15 +682,16 @@ export function BossDashboard() {
             </div>
 
             <div className="rounded-[32px] bg-white p-5 border border-slate-200/80 shadow-xs">
-              <h3 className="text-[15px] font-black text-slate-900 mb-3">
-                Presentaciones Disponibles
+              <h3 className="text-[15px] font-black text-slate-900 mb-3 flex items-center justify-between">
+                <span>Presentaciones Disponibles</span>
+                <span className="text-[12px] font-bold text-slate-400">{allProducts.length} productos</span>
               </h3>
 
               <div className="grid grid-cols-2 gap-2.5">
-                {allProducts.slice(0, 6).map((p) => (
+                {allProducts.map((p) => (
                   <div key={p.id} className="p-3 rounded-2xl bg-slate-50 border border-slate-200/60 flex flex-col justify-between">
                     <span className="text-[13px] font-black text-slate-900 truncate">{p.name}</span>
-                    <span className="text-[11px] text-slate-500 font-bold">{p.description || `$${Number(p.unit_value).toLocaleString()}`}</span>
+                    <span className="text-[11px] text-slate-500 font-bold">${Number(p.unit_value || 0).toLocaleString()} c/u</span>
                     <button 
                       onClick={() => handleAddProductToDispatch(p.id)}
                       className="mt-2 text-[11px] font-bold bg-slate-900 text-white py-1.5 px-2 rounded-xl active:scale-95 hover:bg-slate-800 transition-colors"

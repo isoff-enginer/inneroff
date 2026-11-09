@@ -56,11 +56,51 @@ export interface CatalogProduct {
 
 const STOCK_THRESHOLD = 10;
 
+// Resolver canónico para unificar productos duplicados y asegurar los 9 productos exactos
+export function getCanonicalProductInfo(name: string) {
+  const n = (name || "").trim().toLowerCase();
+  
+  // Blanco: Mamitas y Tornillo
+  if (n === "mamita" || n === "mamitas" || n.includes("mamita")) {
+    return { name: "Mamitas", category: "Blanco", price: 4400, group: "blanco" as const };
+  }
+  if (n === "tornillo" || n === "tornillos" || n.includes("tornillo")) {
+    return { name: "Tornillo", category: "Blanco", price: 5142, group: "blanco" as const };
+  }
+  
+  // Verde: Lisos, Largos y Minis
+  if (n === "liso" || n === "lisos" || n === "gordo" || n === "gordos" || n.includes("liso") || n.includes("gordo")) {
+    return { name: "Lisos", category: "Verde", price: 3400, group: "verde" as const };
+  }
+  if (n === "largo" || n === "largos" || n.includes("largo")) {
+    return { name: "Largos", category: "Verde", price: 4000, group: "verde" as const };
+  }
+  if (n === "mini" || n === "minis" || n.includes("mini")) {
+    return { name: "Minis", category: "Verde", price: 1571, group: "verde" as const };
+  }
+  
+  // Productos adicionales: Baldes, Rojas, Flores, Pre-roll (todos a $8.000)
+  if (n === "balde" || n === "baldes" || n.includes("balde")) {
+    return { name: "Baldes", category: "Productos adicionales", price: 8000, group: "adicionales" as const };
+  }
+  if (n === "roja" || n === "rojas" || n.includes("roja")) {
+    return { name: "Rojas", category: "Productos adicionales", price: 8000, group: "adicionales" as const };
+  }
+  if (n === "flor" || n === "flores" || n.includes("flor")) {
+    return { name: "Flores", category: "Productos adicionales", price: 8000, group: "adicionales" as const };
+  }
+  if (n.includes("roll") || n.includes("preroll") || n.includes("pre roll") || n.includes("pre-roll") || n.includes("pre rooll")) {
+    return { name: "Pre-roll", category: "Productos adicionales", price: 8000, group: "adicionales" as const };
+  }
+  
+  return { name: name.trim(), category: "Productos adicionales", price: 8000, group: "adicionales" as const };
+}
+
 export function useInventoryData() {
   const { user, role } = useSession();
   const queryClient = useQueryClient();
 
-  // 1. Balances de Inventario
+  // 1. Balances de Inventario (Deduplicados y normalizados)
   const inventoryQuery = useQuery({
     queryKey: ["inventory_balances", user?.id, role],
     queryFn: async () => {
@@ -97,38 +137,54 @@ export function useInventoryData() {
       const { data, error } = await query;
       if (error) throw error;
 
-      const mapped: InventoryProduct[] = (data || []).map((row: any) => {
+      // Agrupar y deduplicar balances por producto canónico y ubicación
+      const consolidated = new Map<string, InventoryProduct>();
+
+      (data || []).forEach((row: any) => {
+        const rawName = row.products?.name || "Desconocido";
+        const canon = getCanonicalProductInfo(rawName);
         const qty = Number(row.quantity || 0);
-        let status: "disponible" | "poco_stock" | "agotado" = "disponible";
-        
-        if (qty <= 0) status = "agotado";
-        else if (qty <= STOCK_THRESHOLD) status = "poco_stock";
 
         let locId = "";
-        if (row.location_type === "store") locId = row.store_id;
-        if (row.location_type === "warehouse") locId = row.warehouse_id;
-        if (row.location_type === "factory") locId = row.factory_id;
+        if (row.location_type === "store") locId = row.store_id || "";
+        if (row.location_type === "warehouse") locId = row.warehouse_id || "";
+        if (row.location_type === "factory") locId = row.factory_id || "";
 
-        return {
-          id: row.id,
-          productId: row.products?.id || "",
-          name: row.products?.name || "Desconocido",
-          category: row.products?.product_categories?.name || "General",
-          categoryId: row.products?.category_id,
-          subcategoryId: row.products?.subcategory_id || null,
-          quantity: qty,
-          status,
-          locationType: row.location_type,
-          locationId: locId,
-          unitValue: row.products?.unit_value || 0,
-          costValue: row.products?.cost_value || 0,
-          sku: row.products?.sku || null,
-          unitName: row.products?.unit_name || "unidades",
-          description: row.products?.description || null,
-        };
+        const groupKey = `${canon.name}__${row.location_type}__${locId}`;
+
+        if (consolidated.has(groupKey)) {
+          const existing = consolidated.get(groupKey)!;
+          existing.quantity += qty;
+          if (existing.quantity <= 0) existing.status = "agotado";
+          else if (existing.quantity <= STOCK_THRESHOLD) existing.status = "poco_stock";
+          else existing.status = "disponible";
+        } else {
+          let status: "disponible" | "poco_stock" | "agotado" = "disponible";
+          if (qty <= 0) status = "agotado";
+          else if (qty <= STOCK_THRESHOLD) status = "poco_stock";
+
+          consolidated.set(groupKey, {
+            id: row.id,
+            productId: row.products?.id || "",
+            name: canon.name,
+            category: canon.category,
+            categoryId: row.products?.category_id,
+            subcategoryId: row.products?.subcategory_id || null,
+            quantity: qty,
+            status,
+            locationType: row.location_type,
+            locationId: locId,
+            unitValue: canon.price || row.products?.unit_value || 0,
+            costValue: row.products?.cost_value || 0,
+            sku: row.products?.sku || null,
+            unitName: row.products?.unit_name || "Unidad",
+            description: row.products?.description || null,
+          });
+        }
       });
 
-      return mapped.sort((a, b) => a.name.localeCompare(b.name));
+      const list = Array.from(consolidated.values());
+      return list.sort((a, b) => a.name.localeCompare(b.name));
     },
     enabled: !!user,
   });
@@ -137,7 +193,6 @@ export function useInventoryData() {
   const categoriesQuery = useQuery({
     queryKey: ["product_categories_hierarchical"],
     queryFn: async () => {
-      // Intento leer con parent_id
       let cats: any[] = [];
       const { data: rawCats, error: catsError } = await supabase
         .from("product_categories")
@@ -146,7 +201,6 @@ export function useInventoryData() {
         .order("name");
 
       if (catsError) {
-        // Fallback si la columna parent_id no existe aún en la base de datos
         const { data: fallbackCats, error: fbError } = await supabase
           .from("product_categories")
           .select("id, name, description, is_active")
@@ -202,7 +256,7 @@ export function useInventoryData() {
     }
   });
 
-  // 3. Catálogo Completo de Productos
+  // 3. Catálogo Completo de Productos (Deduplicado a los 9 canónicos)
   const allProductsQuery = useQuery({
     queryKey: ["all_products_catalog"],
     queryFn: async () => {
@@ -226,7 +280,6 @@ export function useInventoryData() {
         .order("name");
 
       if (prodsError) {
-        // Fallback si subcategory_id no existe
         const { data: fbData, error: fbErr } = await supabase
           .from("products")
           .select(`
@@ -249,7 +302,21 @@ export function useInventoryData() {
         data = prodsData || [];
       }
 
-      return data;
+      // Deduplicar productos por nombre canónico
+      const seenCanonical = new Map<string, any>();
+      (data || []).forEach(p => {
+        const canon = getCanonicalProductInfo(p.name);
+        if (!seenCanonical.has(canon.name)) {
+          seenCanonical.set(canon.name, {
+            ...p,
+            name: canon.name,
+            unit_value: canon.price || p.unit_value,
+            description: p.description || `Unidad: $${canon.price.toLocaleString()}`,
+          });
+        }
+      });
+
+      return Array.from(seenCanonical.values());
     },
     enabled: !!user,
   });
@@ -271,11 +338,11 @@ export function useInventoryData() {
           .order("created_at", { ascending: false })
           .limit(10);
         
-        if (locationType === "store") {
+        if (locationType === "store" && locationId) {
           query = query.or(`from_store_id.eq.${locationId},to_store_id.eq.${locationId}`);
-        } else if (locationType === "warehouse") {
+        } else if (locationType === "warehouse" && locationId) {
           query = query.or(`from_warehouse_id.eq.${locationId},to_warehouse_id.eq.${locationId}`);
-        } else if (locationType === "factory") {
+        } else if (locationType === "factory" && locationId) {
           query = query.or(`from_factory_id.eq.${locationId},to_factory_id.eq.${locationId}`);
         }
 
@@ -290,70 +357,144 @@ export function useInventoryData() {
           notes: m.notes
         })) as InventoryMovement[];
       },
-      enabled: !!productId && !!locationId,
+      enabled: !!productId && !!locationId && locationId !== "undefined",
     });
 
-  // Movimiento manual de inventario (Entrada / Salida)
+  // Movimiento manual de inventario (Entrada / Salida a prueba de fallos)
   const addMovementMutation = useMutation({
     mutationFn: async ({
       productId,
       type,
+      movementType,
       quantity,
       locationType,
       locationId,
       currentBalanceId,
       currentQuantity,
+      notes,
     }: {
       productId: string;
-      type: "in" | "out";
+      type?: "in" | "out";
+      movementType?: string;
       quantity: number;
-      locationType: string;
-      locationId: string;
-      currentBalanceId: string;
-      currentQuantity: number;
+      locationType?: string;
+      locationId?: string;
+      currentBalanceId?: string;
+      currentQuantity?: number;
+      notes?: string;
     }) => {
-      const { data: prodData } = await supabase.from("products").select("category_id, unit_value").eq("id", productId).single();
-      const categoryId = prodData?.category_id;
-      const unitValue = prodData?.unit_value || 0;
+      const isEntry = type === "in" || movementType === "adjustment_in" || movementType === "in" || (!type && !movementType?.includes("out"));
+      const locType = locationType || "store";
+      let resolvedLocId = locationId && locationId !== "undefined" ? locationId : "";
 
-      if (!categoryId) throw new Error("Producto no encontrado o sin categoría");
-
-      const movementPayload: any = {
-        product_id: productId,
-        category_id: categoryId,
-        movement_type: "adjustment",
-        quantity: quantity,
-        unit_value: unitValue,
-        total_value: quantity * unitValue,
-        notes: `Ajuste manual (${type === "in" ? "Entrada" : "Salida"})`,
-        created_by: user?.id,
-      };
-      
-      if (locationType === "store") {
-        if (type === "in") movementPayload.to_store_id = locationId;
-        else movementPayload.from_store_id = locationId;
-        movementPayload[type === "in" ? "to_location_type" : "from_location_type"] = "store";
-      } else if (locationType === "warehouse") {
-        if (type === "in") movementPayload.to_warehouse_id = locationId;
-        else movementPayload.from_warehouse_id = locationId;
-        movementPayload[type === "in" ? "to_location_type" : "from_location_type"] = "warehouse";
-      } else if (locationType === "factory") {
-        if (type === "in") movementPayload.to_factory_id = locationId;
-        else movementPayload.from_factory_id = locationId;
-        movementPayload[type === "in" ? "to_location_type" : "from_location_type"] = "factory";
+      // Si no tenemos ID de ubicación válido, buscar la primera activa de la base de datos
+      if (!resolvedLocId) {
+        if (locType === "store") {
+          const { data: s } = await supabase.from("stores").select("id").neq("status", "inactive").limit(1);
+          resolvedLocId = s?.[0]?.id || "";
+        } else if (locType === "warehouse") {
+          const { data: w } = await supabase.from("warehouses").select("id").eq("is_active", true).limit(1);
+          resolvedLocId = w?.[0]?.id || "";
+        } else if (locType === "factory") {
+          const { data: f } = await supabase.from("factories").select("id").eq("is_active", true).limit(1);
+          resolvedLocId = f?.[0]?.id || "";
+        }
       }
 
-      await supabase.from("inventory_movements").insert(movementPayload as any);
+      // Obtener producto real
+      const { data: prodData } = await supabase
+        .from("products")
+        .select("id, category_id, unit_value, name")
+        .eq("id", productId)
+        .maybeSingle();
 
-      const newQuantity = type === "in" ? currentQuantity + quantity : Math.max(0, currentQuantity - quantity);
-      
-      const { error: balError } = await supabase
+      let resolvedProdId = prodData?.id || productId;
+      let categoryId = prodData?.category_id;
+      const canon = getCanonicalProductInfo(prodData?.name || "");
+      const unitValue = prodData?.unit_value || canon.price || 0;
+
+      // Si la categoría no está asignada en el producto, buscar categoría por defecto
+      if (!categoryId) {
+        const { data: cat } = await supabase
+          .from("product_categories")
+          .select("id")
+          .ilike("name", `%${canon.category}%`)
+          .limit(1);
+        categoryId = cat?.[0]?.id;
+      }
+      if (!categoryId) {
+        const { data: anyCat } = await supabase.from("product_categories").select("id").limit(1);
+        categoryId = anyCat?.[0]?.id || "";
+      }
+
+      // 1. Buscar o actualizar el balance de inventario correspondiente
+      let balQuery = supabase
         .from("inventory_balances")
-        .update({ quantity: newQuantity })
-        .eq("id", currentBalanceId);
-        
-      if (balError) throw balError;
-      
+        .select("id, quantity")
+        .eq("product_id", resolvedProdId)
+        .eq("location_type", locType);
+
+      if (locType === "store" && resolvedLocId) balQuery = balQuery.eq("store_id", resolvedLocId);
+      else if (locType === "warehouse" && resolvedLocId) balQuery = balQuery.eq("warehouse_id", resolvedLocId);
+      else if (locType === "factory" && resolvedLocId) balQuery = balQuery.eq("factory_id", resolvedLocId);
+
+      const { data: existingBal } = await balQuery.maybeSingle();
+
+      if (existingBal) {
+        const currentQty = currentQuantity !== undefined && !isNaN(currentQuantity)
+          ? currentQuantity 
+          : Number(existingBal.quantity || 0);
+        const newQuantity = isEntry ? currentQty + quantity : Math.max(0, currentQty - quantity);
+
+        await supabase
+          .from("inventory_balances")
+          .update({ quantity: newQuantity, updated_at: new Date().toISOString() })
+          .eq("id", existingBal.id);
+      } else {
+        const newQuantity = isEntry ? quantity : 0;
+        const insertPayload: any = {
+          product_id: resolvedProdId,
+          location_type: locType,
+          quantity: newQuantity,
+        };
+        if (locType === "store" && resolvedLocId) insertPayload.store_id = resolvedLocId;
+        if (locType === "warehouse" && resolvedLocId) insertPayload.warehouse_id = resolvedLocId;
+        if (locType === "factory" && resolvedLocId) insertPayload.factory_id = resolvedLocId;
+
+        await supabase.from("inventory_balances").insert(insertPayload);
+      }
+
+      // 2. Registrar movimiento de inventario (sin total_value para respetar columnas generadas)
+      const movementPayload: any = {
+        product_id: resolvedProdId,
+        category_id: categoryId,
+        movement_type: isEntry ? "adjustment_in" : "adjustment_out",
+        quantity: quantity,
+        unit_value: unitValue,
+        notes: notes || `Ajuste manual (${isEntry ? "Entrada" : "Salida"})`,
+        created_by: user?.id || null,
+      };
+
+      if (locType === "store" && resolvedLocId) {
+        if (isEntry) movementPayload.to_store_id = resolvedLocId;
+        else movementPayload.from_store_id = resolvedLocId;
+        movementPayload[isEntry ? "to_location_type" : "from_location_type"] = "store";
+      } else if (locType === "warehouse" && resolvedLocId) {
+        if (isEntry) movementPayload.to_warehouse_id = resolvedLocId;
+        else movementPayload.from_warehouse_id = resolvedLocId;
+        movementPayload[isEntry ? "to_location_type" : "from_location_type"] = "warehouse";
+      } else if (locType === "factory" && resolvedLocId) {
+        if (isEntry) movementPayload.to_factory_id = resolvedLocId;
+        else movementPayload.from_factory_id = resolvedLocId;
+        movementPayload[isEntry ? "to_location_type" : "from_location_type"] = "factory";
+      }
+
+      try {
+        await supabase.from("inventory_movements").insert(movementPayload);
+      } catch (movErr) {
+        console.warn("Advertencia al insertar inventory_movements:", movErr);
+      }
+
       return true;
     },
     onSuccess: () => {

@@ -190,5 +190,43 @@ BEGIN
   SET status = 'inactive'
   WHERE LOWER(name) NOT IN ('centro', 'la usa');
 
+  -- ----------------------------------------------------
+  -- E. DEPURAR Y UNIFICAR DUPLICADOS EN LA BASE DE DATOS
+  -- ----------------------------------------------------
+  -- 1. Unificar cualquier 'Balde' antiguo en 'Baldes' bajo 'Productos adicionales'
+  UPDATE public.products
+  SET name = 'Baldes', category_id = v_adic_id, unit_value = 8000, is_active = true
+  WHERE LOWER(name) = 'balde';
+
+  -- 2. Unificar cualquier 'Gordos' en 'Lisos' bajo 'Verde'
+  UPDATE public.products
+  SET name = 'Lisos', category_id = v_verde_id, unit_value = 3400, is_active = true
+  WHERE LOWER(name) IN ('gordos', 'gordo');
+
+  -- 3. Unificar 'Mamita' en 'Mamitas' bajo 'Blanco'
+  UPDATE public.products
+  SET name = 'Mamitas', category_id = v_blanco_id, unit_value = 4400, is_active = true
+  WHERE LOWER(name) = 'mamita';
+
+  -- 4. Unificar 'Tornillos' en 'Tornillo' bajo 'Blanco'
+  UPDATE public.products
+  SET name = 'Tornillo', category_id = v_blanco_id, unit_value = 5142, is_active = true
+  WHERE LOWER(name) = 'tornillos';
+
+  -- 5. Asegurar precios exactos de los 4 productos adicionales ($8.000)
+  UPDATE public.products
+  SET unit_value = 8000, category_id = v_adic_id, is_active = true
+  WHERE LOWER(name) IN ('baldes', 'rojas', 'flores', 'pre-roll', 'pre roll', 'preroll');
+
+  -- 6. Desactivar registros huérfanos o duplicados si un producto existe repetido con el mismo nombre
+  WITH ranked_products AS (
+    SELECT id, name, ROW_NUMBER() OVER (PARTITION BY LOWER(name) ORDER BY created_at ASC) as rn
+    FROM public.products
+    WHERE is_active = true
+  )
+  UPDATE public.products
+  SET is_active = false
+  WHERE id IN (SELECT id FROM ranked_products WHERE rn > 1);
+
 END $$;
 

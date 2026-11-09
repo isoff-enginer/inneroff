@@ -227,52 +227,173 @@ function AdminPage() {
   };
 
   const handleSeedInitialCatalog = async () => {
-    if (!confirm("¿Deseas inicializar la estructura exacta de 3 grupos (Blanco, Verde, Productos adicionales) y sus productos?")) return;
+    if (!confirm("¿Deseas depurar duplicados y sincronizar los 9 productos exactos (Blanco, Verde, Productos adicionales a $8.000) y las tiendas Centro y La Usa?")) return;
 
     try {
-      toast.info("Configurando estructura de catálogo...");
+      toast.info("Depurando duplicados y sincronizando catálogo...");
       
-      // 1. Blanco
-      let catBlanco = categories.find(c => c.name.toLowerCase() === "blanco");
-      if (!catBlanco) {
-        await createCategory({ name: "Blanco", description: "Categoría Blanco" });
+      // 1. Obtener categorías principales
+      const { data: allCats } = await supabase.from("product_categories").select("id, name");
+      let catBlancoId = (allCats || []).find(c => c.name.toLowerCase() === "blanco")?.id;
+      let catVerdeId = (allCats || []).find(c => c.name.toLowerCase() === "verde")?.id;
+      let catAdicId = (allCats || []).find(c => c.name.toLowerCase().includes("adicional"))?.id;
+
+      if (!catBlancoId) {
+        const { data: cb } = await supabase.from("product_categories").insert({ name: "Blanco", description: "Categoría Blanco", is_active: true }).select("id").single();
+        catBlancoId = cb?.id;
+      }
+      if (!catVerdeId) {
+        const { data: cv } = await supabase.from("product_categories").insert({ name: "Verde", description: "Categoría Verde", is_active: true }).select("id").single();
+        catVerdeId = cv?.id;
+      }
+      if (!catAdicId) {
+        const { data: ca } = await supabase.from("product_categories").insert({ name: "Productos adicionales", description: "Categoría Productos adicionales", is_active: true }).select("id").single();
+        catAdicId = ca?.id;
       }
 
-      // 2. Verde
-      let catVerde = categories.find(c => c.name.toLowerCase() === "verde");
-      if (!catVerde) {
-        await createCategory({ name: "Verde", description: "Categoría Verde" });
+      // 2. Traer todos los productos actuales
+      const { data: prods } = await supabase.from("products").select("id, name, category_id, is_active");
+
+      // 3. Normalizar y resolver duplicados
+      for (const p of (prods || [])) {
+        const n = p.name.trim().toLowerCase();
+
+        // Si es Balde o Baldes
+        if (n === "balde" || n === "baldes") {
+          await supabase.from("products").update({
+            name: "Baldes",
+            category_id: catAdicId,
+            unit_value: 8000,
+            unit_name: "Unidad",
+            is_active: true,
+          }).eq("id", p.id);
+        }
+        // Si es Gordos o Lisos
+        else if (n === "gordo" || n === "gordos" || n === "liso" || n === "lisos") {
+          await supabase.from("products").update({
+            name: "Lisos",
+            category_id: catVerdeId,
+            unit_value: 3400,
+            unit_name: "Unidad",
+            is_active: true,
+          }).eq("id", p.id);
+        }
+        // Si es Mamita o Mamitas
+        else if (n === "mamita" || n === "mamitas") {
+          await supabase.from("products").update({
+            name: "Mamitas",
+            category_id: catBlancoId,
+            unit_value: 4400,
+            unit_name: "Unidad",
+            is_active: true,
+          }).eq("id", p.id);
+        }
+        // Si es Tornillo o Tornillos
+        else if (n === "tornillo" || n === "tornillos") {
+          await supabase.from("products").update({
+            name: "Tornillo",
+            category_id: catBlancoId,
+            unit_value: 5142,
+            unit_name: "Unidad",
+            is_active: true,
+          }).eq("id", p.id);
+        }
+        // Si es Largos
+        else if (n === "largo" || n === "largos") {
+          await supabase.from("products").update({
+            name: "Largos",
+            category_id: catVerdeId,
+            unit_value: 4000,
+            unit_name: "Unidad",
+            is_active: true,
+          }).eq("id", p.id);
+        }
+        // Si es Minis
+        else if (n === "mini" || n === "minis") {
+          await supabase.from("products").update({
+            name: "Minis",
+            category_id: catVerdeId,
+            unit_value: 1571,
+            unit_name: "Unidad",
+            is_active: true,
+          }).eq("id", p.id);
+        }
+        // Si es Rojas
+        else if (n === "roja" || n === "rojas" || n === "baldes rojas") {
+          await supabase.from("products").update({
+            name: "Rojas",
+            category_id: catAdicId,
+            unit_value: 8000,
+            unit_name: "Unidad",
+            is_active: true,
+          }).eq("id", p.id);
+        }
+        // Si es Flores
+        else if (n === "flor" || n === "flores") {
+          await supabase.from("products").update({
+            name: "Flores",
+            category_id: catAdicId,
+            unit_value: 8000,
+            unit_name: "Unidad",
+            is_active: true,
+          }).eq("id", p.id);
+        }
+        // Si es Pre-roll
+        else if (n.includes("roll")) {
+          await supabase.from("products").update({
+            name: "Pre-roll",
+            category_id: catAdicId,
+            unit_value: 8000,
+            unit_name: "Unidad",
+            is_active: true,
+          }).eq("id", p.id);
+        }
       }
 
-      // 3. Productos adicionales
-      let catAdic = categories.find(c => c.name.toLowerCase().includes("adicional"));
-      if (!catAdic) {
-        const newCat = await createCategory({ name: "Productos adicionales", description: "Categoría Productos adicionales" });
-        catAdic = newCat as any;
+      // Asegurar que existan los 9 productos canónicos si no existían:
+      const { data: updatedProds } = await supabase.from("products").select("id, name");
+      const namesSet = new Set((updatedProds || []).map(p => p.name.trim().toLowerCase()));
+
+      const ensureCanonical = async (name: string, catId: string, price: number, sku: string) => {
+        if (!namesSet.has(name.toLowerCase())) {
+          await supabase.from("products").insert({
+            name,
+            category_id: catId,
+            unit_value: price,
+            cost_value: 0,
+            sku,
+            unit_name: "Unidad",
+            is_active: true,
+          });
+        }
+      };
+
+      if (catBlancoId) {
+        await ensureCanonical("Mamitas", catBlancoId, 4400, "BLA-MAM-01");
+        await ensureCanonical("Tornillo", catBlancoId, 5142, "BLA-TOR-01");
+      }
+      if (catVerdeId) {
+        await ensureCanonical("Lisos", catVerdeId, 3400, "VER-LIS-01");
+        await ensureCanonical("Largos", catVerdeId, 4000, "VER-LAR-01");
+        await ensureCanonical("Minis", catVerdeId, 1571, "VER-MIN-01");
+      }
+      if (catAdicId) {
+        await ensureCanonical("Baldes", catAdicId, 8000, "ADI-BAL-01");
+        await ensureCanonical("Rojas", catAdicId, 8000, "ADI-ROJ-01");
+        await ensureCanonical("Flores", catAdicId, 8000, "ADI-FLO-01");
+        await ensureCanonical("Pre-roll", catAdicId, 8000, "ADI-PRE-01");
       }
 
-      // Asegurar productos adicionales a $8.000 cada uno:
-      // Rojas, Flores, Baldes, Pre-roll
-      if (catAdic?.id) {
-        const ensureAdicProduct = async (name: string, sku: string) => {
-          const exists = allProducts.find((p: any) => p.name.toLowerCase().trim() === name.toLowerCase().trim());
-          if (!exists) {
-            await createProduct({
-              name,
-              category_id: catAdic.id,
-              unit_value: 8000,
-              cost_value: 0,
-              unit_name: "Unidad",
-              sku,
-              description: `Unidad: 8.000 (${name})`
-            });
-          }
-        };
-
-        await ensureAdicProduct("Rojas", "ADI-ROJ-01");
-        await ensureAdicProduct("Flores", "ADI-FLO-01");
-        await ensureAdicProduct("Baldes", "ADI-BAL-01");
-        await ensureAdicProduct("Pre-roll", "ADI-PRE-01");
+      // Desactivar duplicados si hay más de 1 producto con el mismo nombre
+      const { data: finalProds } = await supabase.from("products").select("id, name").eq("is_active", true);
+      const seenNames = new Set<string>();
+      for (const fp of (finalProds || [])) {
+        const lower = fp.name.trim().toLowerCase();
+        if (seenNames.has(lower)) {
+          await supabase.from("products").update({ is_active: false }).eq("id", fp.id);
+        } else {
+          seenNames.add(lower);
+        }
       }
 
       // 4. Asegurar tiendas únicas: Centro y La Usa
@@ -297,11 +418,16 @@ function AdminPage() {
         });
       }
 
+      // Inactivar tiendas diferentes de Centro y La Usa
+      await supabase.from("stores").update({ status: "inactive" }).not("name", "ilike", "%centro%").not("name", "ilike", "%usa%");
+
       queryClient.invalidateQueries({ queryKey: ["product_categories_hierarchical"] });
       queryClient.invalidateQueries({ queryKey: ["all_products_catalog"] });
+      queryClient.invalidateQueries({ queryKey: ["inventory_balances"] });
       queryClient.invalidateQueries({ queryKey: ["sales_stores_list"] });
       queryClient.invalidateQueries({ queryKey: ["operational_locations"] });
-      toast.success("Catálogo y tiendas (Centro y La Usa) configuradas exitosamente.");
+      queryClient.invalidateQueries({ queryKey: ["live_dispatches"] });
+      toast.success("¡Catálogo y tiendas depurados! Quedaron únicamente los 9 productos oficiales y las tiendas Centro y La Usa.");
     } catch (e: any) {
       toast.error(e.message || "Error al inicializar");
     }
