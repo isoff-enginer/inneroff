@@ -17,7 +17,8 @@ export function AppShell({ children, unreadCount = 0 }: AppShellProps) {
     location.pathname === "/dashboard" || 
     location.pathname === "/inventory" || 
     location.pathname === "/dispatches" || 
-    location.pathname === "/sales";
+    location.pathname === "/sales" ||
+    location.pathname === "/liquidaciones";
   const isChatFullscreen = location.pathname.startsWith("/messages/") && location.pathname.length > 10;
 
   return (

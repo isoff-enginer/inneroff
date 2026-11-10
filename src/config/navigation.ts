@@ -9,6 +9,7 @@ import {
   Archive,
   Store,
   Shield,
+  CircleDollarSign,
   type LucideIcon,
 } from "lucide-react";
 
@@ -38,6 +39,12 @@ export const NAV_SECTIONS: NavSection[] = [
       { to: "/inventory", label: "Inventario", icon: Package },
       { to: "/dispatches", label: "Despachos", icon: Send },
       { to: "/sales", label: "Ventas / Recaudos", icon: Wallet },
+      { 
+        to: "/liquidaciones", 
+        label: "Liquidaciones & Cierre", 
+        icon: CircleDollarSign, 
+        roles: ["boss", "boss_admin", "operations_admin"] 
+      },
     ],
   },
   {

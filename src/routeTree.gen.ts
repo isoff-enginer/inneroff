@@ -20,6 +20,7 @@ import { Route as AppNotificationsRouteImport } from './routes/_app.notification
 import { Route as AppProfileRouteImport } from './routes/_app.profile'
 import { Route as AppSalesRouteImport } from './routes/_app.sales'
 import { Route as AppAdminRouteImport } from './routes/_app.admin'
+import { Route as AppLiquidacionesRouteImport } from './routes/_app.liquidaciones'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -75,6 +76,11 @@ const AppAdminRoute = AppAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLiquidacionesRoute = AppLiquidacionesRouteImport.update({
+  id: '/liquidaciones',
+  path: '/liquidaciones',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof AppProfileRoute
   '/sales': typeof AppSalesRoute
   '/admin': typeof AppAdminRoute
+  '/liquidaciones': typeof AppLiquidacionesRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -98,6 +105,7 @@ export interface FileRoutesByTo {
   '/profile': typeof AppProfileRoute
   '/sales': typeof AppSalesRoute
   '/admin': typeof AppAdminRoute
+  '/liquidaciones': typeof AppLiquidacionesRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -112,6 +120,7 @@ export interface FileRoutesById {
   '/_app/profile': typeof AppProfileRoute
   '/_app/sales': typeof AppSalesRoute
   '/_app/admin': typeof AppAdminRoute
+  '/_app/liquidaciones': typeof AppLiquidacionesRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -127,6 +136,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/sales'
     | '/admin'
+    | '/liquidaciones'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/sales'
     | '/admin'
+    | '/liquidaciones'
     | '/'
   id:
     | '__root__'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/_app/profile'
     | '/_app/sales'
     | '/_app/admin'
+    | '/_app/liquidaciones'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
@@ -238,6 +250,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAdminRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/liquidaciones': {
+      id: '/_app/liquidaciones'
+      path: '/liquidaciones'
+      fullPath: '/liquidaciones'
+      preLoaderRoute: typeof AppLiquidacionesRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -250,6 +269,7 @@ interface AppRouteChildren {
   AppProfileRoute: typeof AppProfileRoute
   AppSalesRoute: typeof AppSalesRoute
   AppAdminRoute: typeof AppAdminRoute
+  AppLiquidacionesRoute: typeof AppLiquidacionesRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -262,6 +282,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfileRoute: AppProfileRoute,
   AppSalesRoute: AppSalesRoute,
   AppAdminRoute: AppAdminRoute,
+  AppLiquidacionesRoute: AppLiquidacionesRoute,
   AppIndexRoute: AppIndexRoute,
 }
 

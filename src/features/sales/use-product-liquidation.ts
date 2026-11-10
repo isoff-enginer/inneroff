@@ -1,17 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getProductPackagings } from "@/features/inventory/product-presentations";
+import { showLocalNotification } from "@/lib/push-notifications";
+import { formatCurrency } from "@/lib/format";
 
 export interface ProductLiquidationStatus {
   productName: string;
   category: "Blanco" | "Verde" | "Productos adicionales";
   unitPrice: number;
-  totalDispatchedQty: number;
-  totalDispatchedVal: number;
-  totalPaidVal: number;
-  pendingVal: number;
-  isFullyPaid: boolean;
-  isBlocked: boolean; // Si falta dinero por recaudar en tienda, está bloqueado para nuevos despachos
+  totalDispatchedQty: number; // unidades enviadas a tiendas
+  totalDispatchedVal: number; // valor despachado a tiendas
+  factoryDispatchedQty: number; // unidades despachadas de fábrica a bodega
+  factoryDispatchedVal: number; // valor total despachado de fábrica a bodega
+  lastFactoryDispatchVal: number; // valor del último despacho de fábrica
+  totalPaidVal: number; // total recaudado
+  pendingVal: number; // saldo pendiente de recaudo
+  isFullyPaid: boolean; // ¿llegó al 100% recaudado?
+  isBlocked: boolean; // Bloqueado para nuevos despachos de fábrica mientras falte dinero
+  saleCompletedAmount: number; // monto concretado al 100%
 }
 
 export const CANONICAL_9_NAMES = [
@@ -52,11 +58,17 @@ export interface CompletedSalesConsolidation {
   pendingProducts: ProductLiquidationStatus[];
 }
 
-export function useProductLiquidation() {
+export interface LiquidationFilter {
+  storeId?: string; // ID específico de tienda o vacío para todas
+  startDate?: string; // YYYY-MM-DD o ISO
+  endDate?: string;   // YYYY-MM-DD o ISO
+}
+
+export function useProductLiquidation(filter?: LiquidationFilter) {
   const query = useQuery({
-    queryKey: ["product_liquidation_and_locks"],
+    queryKey: ["product_liquidation_and_locks", filter?.storeId, filter?.startDate, filter?.endDate],
     queryFn: async () => {
-      // 1 & 2. Obtener en paralelo todos los despachos a tiendas y todos los pagos confirmados
+      // 1 & 2. Obtener en paralelo todos los despachos (fábrica a bodega y bodega a tiendas) y pagos confirmados
       const [
         { data: dispatchesData, error: dispError },
         { data: paymentsData, error: payError },
@@ -66,7 +78,10 @@ export function useProductLiquidation() {
           .select(`
             id,
             status,
+            created_at,
+            from_location_type,
             to_location_type,
+            to_store_id,
             dispatch_items (
               product_id,
               quantity,
@@ -75,8 +90,8 @@ export function useProductLiquidation() {
               products (name)
             )
           `)
-          .eq("to_location_type", "store")
-          .in("status", ["dispatched", "received"]),
+          .in("status", ["dispatched", "received"])
+          .order("created_at", { ascending: false }),
         supabase
           .from("payments")
           .select(`
@@ -85,6 +100,8 @@ export function useProductLiquidation() {
             status,
             notes,
             category_id,
+            store_id,
+            created_at,
             product_categories (name)
           `)
           .eq("status", "confirmed"),
@@ -104,25 +121,79 @@ export function useProductLiquidation() {
           unitPrice: details.unitPrice,
           totalDispatchedQty: 0,
           totalDispatchedVal: 0,
+          factoryDispatchedQty: 0,
+          factoryDispatchedVal: 0,
+          lastFactoryDispatchVal: 0,
           totalPaidVal: 0,
           pendingVal: 0,
           isFullyPaid: true,
           isBlocked: false,
+          saleCompletedAmount: 0,
         };
       });
 
-      // Acumular valores despachados por producto
-      (dispatchesData || []).forEach((d: any) => {
+      // Filtrar según sede y rango de fecha si se proveyeron
+      const filteredDispatches = (dispatchesData || []).filter((d: any) => {
+        if (filter?.storeId && d.to_location_type === "store" && d.to_store_id !== filter.storeId) {
+          return false;
+        }
+        if (filter?.startDate) {
+          const createdAt = new Date(d.created_at).getTime();
+          const start = new Date(filter.startDate).getTime();
+          if (createdAt < start) return false;
+        }
+        if (filter?.endDate) {
+          const createdAt = new Date(d.created_at).getTime();
+          const end = new Date(filter.endDate).getTime();
+          if (createdAt > end) return false;
+        }
+        return true;
+      });
+
+      const filteredPayments = (paymentsData || []).filter((p: any) => {
+        if (filter?.storeId && p.store_id !== filter.storeId) {
+          return false;
+        }
+        if (filter?.startDate) {
+          const createdAt = new Date(p.created_at).getTime();
+          const start = new Date(filter.startDate).getTime();
+          if (createdAt < start) return false;
+        }
+        if (filter?.endDate) {
+          const createdAt = new Date(p.created_at).getTime();
+          const end = new Date(filter.endDate).getTime();
+          if (createdAt > end) return false;
+        }
+        return true;
+      });
+
+      // Acumular valores despachados tanto por Fábrica a Bodega como por Bodega a Tiendas
+      filteredDispatches.forEach((d: any) => {
+        const isFromFactoryToWarehouse = d.from_location_type === "factory" && d.to_location_type === "warehouse";
+        const isToStore = d.to_location_type === "store";
+
         (d.dispatch_items || []).forEach((it: any) => {
           const rawName = it.products?.name || "";
           const details = getProductPackagings(rawName);
           const canonName = details.name;
+          const target = statusMap[canonName];
 
-          if (statusMap[canonName]) {
+          if (target) {
             const qty = Number(it.quantity || 0);
             const val = Number(it.total_value || (qty * (it.unit_value || details.unitPrice)));
-            statusMap[canonName].totalDispatchedQty += qty;
-            statusMap[canonName].totalDispatchedVal += val;
+
+            if (isFromFactoryToWarehouse) {
+              target.factoryDispatchedQty += qty;
+              target.factoryDispatchedVal += val;
+              if (target.lastFactoryDispatchVal === 0) {
+                target.lastFactoryDispatchVal = val;
+              }
+            }
+
+            if (isToStore) {
+              target.totalDispatchedQty += qty;
+              target.totalDispatchedVal += val;
+            }
           }
         });
       });
@@ -134,7 +205,7 @@ export function useProductLiquidation() {
         "Productos adicionales": 0,
       };
 
-      (paymentsData || []).forEach((p: any) => {
+      filteredPayments.forEach((p: any) => {
         const amount = Number(p.amount || 0);
         const notes = (p.notes || "").toLowerCase();
         const catName = p.product_categories?.name || "";
@@ -169,7 +240,8 @@ export function useProductLiquidation() {
 
         const prodsInCat = Object.values(statusMap).filter((p) => p.category === catGroup);
         for (const p of prodsInCat) {
-          const debt = Math.max(0, p.totalDispatchedVal - p.totalPaidVal);
+          const targetValue = Math.max(p.factoryDispatchedVal, p.totalDispatchedVal);
+          const debt = Math.max(0, targetValue - p.totalPaidVal);
           if (debt > 0) {
             const deduction = Math.min(debt, remainingGeneral);
             p.totalPaidVal += deduction;
@@ -179,12 +251,19 @@ export function useProductLiquidation() {
         }
       });
 
-      // Calcular estado final de liquidación y bloqueo por producto
-      // REGLA FUNDAMENTAL: Si hay deuda pendiente de recaudo (> 0), el producto está BLOQUEADO para despachos de Fábrica a Bodega
+      // REGLA CRÍTICA DE NEGOCIO:
+      // Cuando Bodega no termine de recaudar todo el dinero de cierto producto que mandó Fábrica (o tiendas),
+      // Fábrica TIENE BLOQUEADO despachar ese producto a Bodega.
+      // Se desbloquea cuando los recaudos de dinero lleguen al 100%.
+      // Al llegar al 100%, se registra la venta/liquidación del monto despachado.
       Object.values(statusMap).forEach((p) => {
-        p.pendingVal = Math.max(0, p.totalDispatchedVal - p.totalPaidVal);
-        p.isFullyPaid = p.pendingVal === 0;
-        p.isBlocked = p.pendingVal > 0;
+        const targetValue = Math.max(p.factoryDispatchedVal, p.totalDispatchedVal);
+        p.pendingVal = Math.max(0, targetValue - p.totalPaidVal);
+        p.isFullyPaid = targetValue > 0 ? p.pendingVal === 0 : true;
+        p.isBlocked = targetValue > 0 && p.pendingVal > 0;
+        p.saleCompletedAmount = p.isFullyPaid && targetValue > 0
+          ? (p.factoryDispatchedVal > 0 ? p.factoryDispatchedVal : p.totalDispatchedVal)
+          : 0;
       });
 
       // CONSOLIDACIÓN DE VENTAS COMPLETADAS (100% LIQUIDADAS) VS PENDIENTES
@@ -228,17 +307,18 @@ export function useProductLiquidation() {
       const pendingProducts: ProductLiquidationStatus[] = [];
 
       Object.values(statusMap).forEach((p) => {
-        totalVentas += p.totalDispatchedVal;
+        const effectiveVal = Math.max(p.factoryDispatchedVal, p.totalDispatchedVal);
+        totalVentas += effectiveVal;
         totalRecaudado += p.totalPaidVal;
 
-        addToGroup(totalByGroup, p.category, p.productName, p.totalDispatchedVal);
+        addToGroup(totalByGroup, p.category, p.productName, effectiveVal);
         addToGroup(recaudadoByGroup, p.category, p.productName, p.totalPaidVal);
         addToGroup(pendingByGroup, p.category, p.productName, p.pendingVal);
 
-        if (p.isFullyPaid && p.totalDispatchedVal > 0) {
-          totalVentasCompletadas += p.totalDispatchedVal;
+        if (p.isFullyPaid && effectiveVal > 0) {
+          totalVentasCompletadas += p.saleCompletedAmount;
           completedProducts.push(p);
-          addToGroup(completedByGroup, p.category, p.productName, p.totalDispatchedVal);
+          addToGroup(completedByGroup, p.category, p.productName, p.saleCompletedAmount);
         } else if (p.pendingVal > 0) {
           pendingProducts.push(p);
         }
@@ -292,11 +372,43 @@ export function useProductLiquidation() {
     } as CompletedSalesConsolidation,
   };
 
+  /**
+   * Emite notificación en base de datos y notificación push en el dispositivo
+   * cuando un producto alcanza el 100% del dinero recaudado de su último despacho de fábrica
+   */
+  const triggerCompletedSaleNotification = async (productName: string, amount: number, userId?: string) => {
+    const title = "Venta Concretada al 100%";
+    const body = `Bodega recaudó todo el dinero del último despacho de fábrica: Venta de ${formatCurrency(amount)} concretada (${productName}).`;
+
+    // 1. Mostrar notificación push nativa en el dispositivo
+    showLocalNotification(title, {
+      body,
+      url: "/liquidaciones",
+    });
+
+    // 2. Guardar en base de datos en tabla notifications si hay usuario
+    if (userId) {
+      try {
+        await supabase.from("notifications").insert({
+          user_id: userId,
+          title,
+          body,
+          type: "sale_completed",
+          reference_type: "liquidation",
+          is_read: false,
+        });
+      } catch (err) {
+        console.warn("Could not insert notification in table:", err);
+      }
+    }
+  };
+
   return {
     liquidationMap: data.statusMap,
     consolidation: data.consolidation,
     isLoading: query.isLoading,
     refetch: query.refetch,
+    triggerCompletedSaleNotification,
   };
 }
 

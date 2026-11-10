@@ -20,7 +20,9 @@ import {
   Check,
   Plus,
   Minus,
-  Sparkles
+  Sparkles,
+  Store,
+  Receipt
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
@@ -66,7 +68,6 @@ export function BossDashboard() {
 
   const { inventory, allProducts, isLoading: isInventoryLoading } = useInventoryData();
   const { dispatches, createDispatch, isCreatingDispatch, locations } = useDispatches();
-  const { liquidationMap, consolidation } = useProductLiquidation();
 
   const stores = useMemo(() => {
     const list = Array.isArray(locations) 
@@ -81,9 +82,78 @@ export function BossDashboard() {
   const warehouses = useMemo(() => Array.isArray(locations) ? locations.filter(l => l.type === "warehouse") : [], [locations]);
   const factories = useMemo(() => Array.isArray(locations) ? locations.filter(l => l.type === "factory") : [], [locations]);
 
-  const [perspective, setPerspective] = useState<ViewPerspective>("boss");
-  const [timeFilter, setTimeFilter] = useState("Hoy");
+  // Filtros interactivos por Sede y Fecha (Día y Mes)
+  const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
   const [storageFilter, setStorageFilter] = useState("Todas las sedes");
+  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
+
+  type TimeFilterMode = "today" | "yesterday" | "day" | "month" | "all";
+  const [timeFilterMode, setTimeFilterMode] = useState<TimeFilterMode>("today");
+  const [customDay, setCustomDay] = useState("");
+  const [customMonth, setCustomMonth] = useState("");
+  const [isTimeModalOpen, setIsTimeModalOpen] = useState(false);
+
+  const dateRange = useMemo(() => {
+    const now = new Date();
+    if (timeFilterMode === "today") {
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+      return { start, end };
+    }
+    if (timeFilterMode === "yesterday") {
+      const y = new Date(now);
+      y.setDate(y.getDate() - 1);
+      const start = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 0, 0, 0).toISOString();
+      const end = new Date(y.getFullYear(), y.getMonth(), y.getDate(), 23, 59, 59).toISOString();
+      return { start, end };
+    }
+    if (timeFilterMode === "day" && customDay) {
+      const [year, month, day] = customDay.split("-").map(Number);
+      const start = new Date(year, month - 1, day, 0, 0, 0).toISOString();
+      const end = new Date(year, month - 1, day, 23, 59, 59).toISOString();
+      return { start, end };
+    }
+    if (timeFilterMode === "month" && customMonth) {
+      const [year, month] = customMonth.split("-").map(Number);
+      const start = new Date(year, month - 1, 1, 0, 0, 0).toISOString();
+      const end = new Date(year, month, 0, 23, 59, 59).toISOString();
+      return { start, end };
+    }
+    return undefined;
+  }, [timeFilterMode, customDay, customMonth]);
+
+  const timeFilterDisplay = useMemo(() => {
+    const now = new Date();
+    const todayFormatted = now.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+    if (timeFilterMode === "today") {
+      return `Hoy (${todayFormatted})`;
+    }
+    if (timeFilterMode === "yesterday") {
+      const y = new Date(now);
+      y.setDate(y.getDate() - 1);
+      const yFormatted = y.toLocaleDateString("es-ES", { day: "numeric", month: "short" });
+      return `Ayer (${yFormatted})`;
+    }
+    if (timeFilterMode === "day" && customDay) {
+      const [year, month, day] = customDay.split("-").map(Number);
+      const d = new Date(year, month - 1, day);
+      return `Día: ${d.toLocaleDateString("es-ES", { day: "numeric", month: "short" })}`;
+    }
+    if (timeFilterMode === "month" && customMonth) {
+      const [year, month] = customMonth.split("-").map(Number);
+      const d = new Date(year, month - 1, 1);
+      return `Mes: ${d.toLocaleDateString("es-ES", { month: "long" })}`;
+    }
+    return "Todo el histórico";
+  }, [timeFilterMode, customDay, customMonth]);
+
+  const { liquidationMap, consolidation, triggerCompletedSaleNotification } = useProductLiquidation({
+    storeId: selectedStoreId || undefined,
+    startDate: dateRange?.start,
+    endDate: dateRange?.end,
+  });
+
+  const [perspective, setPerspective] = useState<ViewPerspective>("boss");
   const [showAmountEye, setShowAmountEye] = useState(true);
   const [isAdicionalesExpanded, setIsAdicionalesExpanded] = useState(false);
 
@@ -461,6 +531,25 @@ export function BossDashboard() {
       queryClient.invalidateQueries({ queryKey: ["boss-dashboard-sales-30d"] });
       queryClient.invalidateQueries({ queryKey: ["live_payments"] });
       queryClient.invalidateQueries({ queryKey: ["store_dispatches_total"] });
+      queryClient.invalidateQueries({ queryKey: ["product_liquidation_and_locks"] });
+      queryClient.invalidateQueries({ queryKey: ["liquidaciones_payments"] });
+
+      // Notificación push y registro de venta completada si llega al 100%
+      let targetItemName = "";
+      if (recaudoMode === "product") {
+        const prod = allProducts.find((p: any) => p.id === recaudoProdId);
+        targetItemName = prod ? getProductPackagings(prod.name).name : "";
+      } else {
+        targetItemName = recaudoCategory;
+      }
+
+      if (targetItemName) {
+        const lock = liquidationMap[targetItemName];
+        if (lock && (lock.pendingVal - val <= 0)) {
+          const completedAmount = lock.factoryDispatchedVal > 0 ? lock.factoryDispatchedVal : (lock.totalDispatchedVal > 0 ? lock.totalDispatchedVal : val);
+          await triggerCompletedSaleNotification(targetItemName, completedAmount, user?.id);
+        }
+      }
 
       toast.success(`Recaudo de ${formatCurrency(val)} registrado exitosamente`);
       setIsRecaudoModalOpen(false);
@@ -606,16 +695,26 @@ export function BossDashboard() {
           </button>
         </div>
 
-        {/* FILTROS MINIMALISTAS OBSIDIAN */}
+        {/* FILTROS MINIMALISTAS OBSIDIAN INTERACTIVOS (SEDES Y FECHAS POR DÍA Y MES) */}
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#161922] border border-white/10 text-[12px] font-bold text-slate-300 shadow-xs">
-            <Calendar className="size-3.5 text-slate-400" />
-            <span>{timeFilter}</span>
+          <button 
+            type="button"
+            onClick={() => setIsTimeModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#161922] hover:bg-[#1f2330] border border-white/10 text-[12px] font-bold text-slate-200 shadow-xs active:scale-95 transition-all"
+            title="Cambiar fecha (Día, Mes, Hoy, Ayer)"
+          >
+            <Calendar className="size-3.5 text-[#CCFF00]" />
+            <span>{timeFilterDisplay}</span>
             <ChevronDown className="size-3 text-slate-400" />
           </button>
 
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#161922] border border-white/10 text-[12px] font-bold text-slate-300 shadow-xs">
-            <Building2 className="size-3.5 text-slate-400" />
+          <button 
+            type="button"
+            onClick={() => setIsStoreModalOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#161922] hover:bg-[#1f2330] border border-white/10 text-[12px] font-bold text-slate-200 shadow-xs active:scale-95 transition-all"
+            title="Seleccionar tienda que vendió (Centro, La Usa, Todas)"
+          >
+            <Building2 className="size-3.5 text-[#CCFF00]" />
             <span>{perspective === "factory" ? "Fábrica Principal" : perspective === "warehouse" ? "Bodega Principal" : storageFilter}</span>
             <ChevronDown className="size-3 text-slate-400" />
           </button>
@@ -634,8 +733,8 @@ export function BossDashboard() {
                 <div className="size-9 rounded-full bg-black/10 flex items-center justify-center text-black shadow-xs">
                   <Crown className="size-5 stroke-[2.5]" />
                 </div>
-                <span className="font-mono text-[12px] font-black tracking-wider text-black/75">
-                  LIQUIDACIÓN HOY
+                <span className="font-mono text-[11px] font-black tracking-wider text-black/75 uppercase">
+                  {`LIQUIDACIÓN ${timeFilterMode === "today" ? "HOY" : timeFilterMode === "yesterday" ? "AYER" : timeFilterMode === "month" ? "DEL MES" : "PERÍODO"}`}
                 </span>
               </div>
 
@@ -656,11 +755,11 @@ export function BossDashboard() {
 
               {/* Bottom Row: Name + Date */}
               <div className="flex items-center justify-between pt-1 border-t border-black/10">
-                <span className="text-[13px] font-black tracking-tight text-black">
-                  {displayName} • Director Operaciones
+                <span className="text-[13px] font-black tracking-tight text-black truncate max-w-[200px]">
+                  {displayName} • {storageFilter}
                 </span>
-                <span className="text-[12px] font-bold text-black/70">
-                  Hoy
+                <span className="text-[12px] font-bold text-black/80">
+                  {timeFilterDisplay}
                 </span>
               </div>
             </div>
@@ -879,7 +978,31 @@ export function BossDashboard() {
               </div>
             </div>
 
-            {/* CARD 6: DESPACHOS EN CURSO INTERACTIVOS */}
+            {/* BOTÓN DIRECTO A LIQUIDACIONES & GASTOS PARA EL JEFE */}
+            <Link
+              to="/liquidaciones"
+              className="flex items-center justify-between p-4 rounded-[28px] bg-gradient-to-r from-[#161922] to-[#1d2230] border border-white/10 hover:border-[#CCFF00]/40 shadow-lg group transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <div className="size-11 rounded-full bg-[#CCFF00] text-black flex items-center justify-center shadow-md">
+                  <Receipt className="size-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[14px] font-black text-white">
+                      Liquidaciones & Cierres Diarios
+                    </span>
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#CCFF00]/20 text-[#CCFF00]">
+                      Solo Jefe
+                    </span>
+                  </div>
+                  <span className="text-[11px] text-slate-400 font-medium block">
+                    Cierres a medianoche • Resta de gastos diarios
+                  </span>
+                </div>
+              </div>
+              <ChevronRight className="size-5 text-slate-400 group-hover:text-[#CCFF00] group-hover:translate-x-0.5 transition-all" />
+            </Link>
             <div className="rounded-[28px] bg-[#161922] border border-white/10 p-5 text-white shadow-md space-y-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -1467,6 +1590,217 @@ export function BossDashboard() {
         isOpen={isDispatchDetailOpen}
         onClose={() => setIsDispatchDetailOpen(false)}
       />
+
+      {/* DRAWER SELECTOR DE SEDES (TIENDAS QUE VENDIERON) */}
+      <Drawer open={isStoreModalOpen} onOpenChange={setIsStoreModalOpen}>
+        <DrawerContent className="bg-[#131620] border-t border-white/10 text-white max-w-md mx-auto p-5 rounded-t-[36px]">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-white">Seleccionar Tienda / Sede</h3>
+                <p className="text-xs text-slate-400">Filtra las ventas y recaudos por tienda oficial.</p>
+              </div>
+              <div className="size-9 rounded-full bg-white/10 flex items-center justify-center text-white">
+                <Building2 className="size-4.5" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {/* Opción: Todas las sedes */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedStoreId(null);
+                  setStorageFilter("Todas las sedes");
+                  setIsStoreModalOpen(false);
+                }}
+                className={`w-full p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                  selectedStoreId === null
+                    ? "bg-[#CCFF00] text-black border-[#CCFF00] font-black"
+                    : "bg-[#161922] text-white border-white/10 hover:border-white/20"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Building2 className="size-5" />
+                  <div>
+                    <span className="text-sm font-black block">Todas las sedes</span>
+                    <span className={`text-[11px] block ${selectedStoreId === null ? "text-black/70" : "text-slate-400"}`}>
+                      Consolidado general (Centro y La Usa)
+                    </span>
+                  </div>
+                </div>
+                {selectedStoreId === null && <Check className="size-5 stroke-[3]" />}
+              </button>
+
+              {/* Tiendas específicas: Centro, La Usa */}
+              {stores.map((s) => {
+                const isSelected = selectedStoreId === s.id;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedStoreId(s.id);
+                      setStorageFilter(s.name);
+                      setIsStoreModalOpen(false);
+                    }}
+                    className={`w-full p-4 rounded-2xl border text-left flex items-center justify-between transition-all ${
+                      isSelected
+                        ? "bg-[#CCFF00] text-black border-[#CCFF00] font-black"
+                        : "bg-[#161922] text-white border-white/10 hover:border-white/20"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Store className="size-5" />
+                      <div>
+                        <span className="text-sm font-black block">{s.name}</span>
+                        <span className={`text-[11px] block ${isSelected ? "text-black/70" : "text-slate-400"}`}>
+                          Solo ventas y recaudos de {s.name}
+                        </span>
+                      </div>
+                    </div>
+                    {isSelected && <Check className="size-5 stroke-[3]" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* DRAWER SELECTOR DE FECHAS (DÍA Y MES) */}
+      <Drawer open={isTimeModalOpen} onOpenChange={setIsTimeModalOpen}>
+        <DrawerContent className="bg-[#131620] border-t border-white/10 text-white max-w-md mx-auto p-5 rounded-t-[36px]">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-black text-white">Filtrar por Fecha</h3>
+                <p className="text-xs text-slate-400">Ver recaudos y liquidaciones por día o por mes.</p>
+              </div>
+              <div className="size-9 rounded-full bg-[#CCFF00]/20 flex items-center justify-center text-[#CCFF00]">
+                <Calendar className="size-4.5" />
+              </div>
+            </div>
+
+            {/* Opciones rápidas: Hoy y Ayer */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTimeFilterMode("today");
+                  setIsTimeModalOpen(false);
+                }}
+                className={`p-3.5 rounded-2xl border text-left transition-all ${
+                  timeFilterMode === "today"
+                    ? "bg-[#CCFF00] text-black border-[#CCFF00] font-black"
+                    : "bg-[#161922] text-white border-white/10 hover:border-white/20"
+                }`}
+              >
+                <span className="text-xs font-black block">Hoy</span>
+                <span className={`text-[10px] block ${timeFilterMode === "today" ? "text-black/70" : "text-slate-400"}`}>
+                  {new Date().toLocaleDateString("es-ES", { day: "numeric", month: "short" })}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setTimeFilterMode("yesterday");
+                  setIsTimeModalOpen(false);
+                }}
+                className={`p-3.5 rounded-2xl border text-left transition-all ${
+                  timeFilterMode === "yesterday"
+                    ? "bg-[#CCFF00] text-black border-[#CCFF00] font-black"
+                    : "bg-[#161922] text-white border-white/10 hover:border-white/20"
+                }`}
+              >
+                <span className="text-xs font-black block">Ayer</span>
+                <span className={`text-[10px] block ${timeFilterMode === "yesterday" ? "text-black/70" : "text-slate-400"}`}>
+                  Cierre de ayer
+                </span>
+              </button>
+            </div>
+
+            {/* Selector por Día Específico */}
+            <div className="p-3.5 rounded-2xl bg-[#161922] border border-white/10 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-white">Ver por Día Específico</span>
+                <span className="text-[10px] font-bold text-slate-400">Día a día</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={customDay}
+                  onChange={(e) => {
+                    setCustomDay(e.target.value);
+                    setTimeFilterMode("day");
+                  }}
+                  className="flex-1 bg-[#0B0E14] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:border-[#CCFF00]"
+                />
+                <Button
+                  onClick={() => {
+                    if (customDay) {
+                      setTimeFilterMode("day");
+                      setIsTimeModalOpen(false);
+                    }
+                  }}
+                  disabled={!customDay}
+                  className="h-9 px-3 rounded-xl bg-[#CCFF00] text-black font-black text-xs hover:bg-[#b8e600]"
+                >
+                  Ver Día
+                </Button>
+              </div>
+            </div>
+
+            {/* Selector por Mes Completo */}
+            <div className="p-3.5 rounded-2xl bg-[#161922] border border-white/10 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-white">Ver por Mes Completo</span>
+                <span className="text-[10px] font-bold text-slate-400">Mensual</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="month"
+                  value={customMonth}
+                  onChange={(e) => {
+                    setCustomMonth(e.target.value);
+                    setTimeFilterMode("month");
+                  }}
+                  className="flex-1 bg-[#0B0E14] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white outline-none focus:border-[#CCFF00]"
+                />
+                <Button
+                  onClick={() => {
+                    if (customMonth) {
+                      setTimeFilterMode("month");
+                      setIsTimeModalOpen(false);
+                    }
+                  }}
+                  disabled={!customMonth}
+                  className="h-9 px-3 rounded-xl bg-[#CCFF00] text-black font-black text-xs hover:bg-[#b8e600]"
+                >
+                  Ver Mes
+                </Button>
+              </div>
+            </div>
+
+            {/* Ver Todo */}
+            <button
+              type="button"
+              onClick={() => {
+                setTimeFilterMode("all");
+                setIsTimeModalOpen(false);
+              }}
+              className={`w-full py-3 rounded-2xl border text-center text-xs font-black transition-all ${
+                timeFilterMode === "all"
+                  ? "bg-[#CCFF00] text-black border-[#CCFF00]"
+                  : "bg-[#161922] text-slate-400 border-white/10 hover:text-white"
+              }`}
+            >
+              Ver todo el histórico sin filtro
+            </button>
+          </div>
+        </DrawerContent>
+      </Drawer>
 
     </div>
   );

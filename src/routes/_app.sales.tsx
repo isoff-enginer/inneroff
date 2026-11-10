@@ -41,7 +41,7 @@ function SalesPage() {
     isCreatingPayment 
   } = useSalesData();
   const { allProducts } = useInventoryData();
-  const { consolidation } = useProductLiquidation();
+  const { consolidation, liquidationMap, triggerCompletedSaleNotification } = useProductLiquidation();
 
   const [query, setQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("todos");
@@ -138,14 +138,33 @@ function SalesPage() {
     }
 
     try {
+      const payVal = Number(amount);
       await createPayment({
         storeId: effectiveStoreId,
         categoryId: effectiveCategoryId,
-        amount: Number(amount),
+        amount: payVal,
         notes: autoNotes || undefined,
       });
 
-      toast.success(`Recaudo de ${formatCurrency(Number(amount))} registrado con éxito`);
+      // Verificar si el recaudo completa el 100% de la venta para disparar la notificación requerida
+      let targetItemName = "";
+      if (recaudoMode === "product") {
+        const prod = allProducts.find(p => p.id === selectedProdId) || allProducts[0];
+        targetItemName = prod ? getProductPackagings(prod.name).name : "";
+      } else {
+        const catObj = categories.find(c => c.id === effectiveCategoryId);
+        targetItemName = catObj?.name || "";
+      }
+
+      if (targetItemName) {
+        const lock = liquidationMap[targetItemName];
+        if (lock && (lock.pendingVal - payVal <= 0)) {
+          const completedAmount = lock.factoryDispatchedVal > 0 ? lock.factoryDispatchedVal : (lock.totalDispatchedVal > 0 ? lock.totalDispatchedVal : payVal);
+          await triggerCompletedSaleNotification(targetItemName, completedAmount, user?.id);
+        }
+      }
+
+      toast.success(`Recaudo de ${formatCurrency(payVal)} registrado con éxito`);
       setIsNewRecaudoOpen(false);
       setAmount("");
       setNotes("");
