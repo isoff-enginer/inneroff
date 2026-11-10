@@ -124,24 +124,7 @@ export function useSalesData() {
       if (laUsaStore) {
         finalStores.push(laUsaStore);
       } else {
-        try {
-          const { data: created } = await supabase
-            .from("stores")
-            .insert({ name: "La Usa", code: "STR-USA-01", status: "active" })
-            .select("id, name, status")
-            .single();
-          if (created) finalStores.push(created);
-          else finalStores.push({ id: DEFAULT_LA_USA_UUID, name: "La Usa", status: "active" });
-        } catch {
-          finalStores.push({ id: DEFAULT_LA_USA_UUID, name: "La Usa", status: "active" });
-        }
-      }
-
-      // Inactivar silenciosamente Tienda Prueba si existe en la base de datos
-      try {
-        await supabase.from("stores").update({ status: "inactive" }).ilike("name", "%prueba%");
-      } catch {
-        // Ignorar
+        finalStores.push({ id: DEFAULT_LA_USA_UUID, name: "La Usa", status: "active" });
       }
 
       return finalStores;
@@ -207,10 +190,10 @@ export function useSalesData() {
       amount,
       notes,
     }: {
-      storeId?: string;
-      categoryId?: string;
+      storeId?: string | undefined;
+      categoryId?: string | undefined;
       amount: number;
-      notes?: string;
+      notes?: string | null | undefined;
     }) => {
       let resolvedStoreId = storeId || "";
       let resolvedCatId = categoryId || "";

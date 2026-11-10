@@ -38,19 +38,23 @@ function AppLayout() {
     if (isAuthenticated) {
       registerServiceWorker();
 
-      // Precarga optimizada en memoria de las 9 fotos de productos para renderizado instantáneo
-      PRODUCT_IMAGES_CACHE.forEach((src) => {
-        const img = new Image();
-        img.decoding = "async";
-        img.src = src;
-      });
+      // Precarga diferida en segundo plano para no competir con las consultas iniciales de datos
+      const timer = window.setTimeout(() => {
+        PRODUCT_IMAGES_CACHE.forEach((src) => {
+          const img = new Image();
+          img.decoding = "async";
+          img.src = src;
+        });
+      }, 1500);
+
+      return () => window.clearTimeout(timer);
     }
   }, [isAuthenticated]);
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="size-8 animate-spin text-primary" />
+      <div className="flex min-h-screen items-center justify-center bg-[#0B0E14]">
+        <Loader2 className="size-8 animate-spin text-[#CCFF00]" />
       </div>
     );
   }

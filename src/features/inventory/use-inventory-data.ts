@@ -211,13 +211,19 @@ export function useInventoryData() {
     queryKey: ["product_categories_hierarchical"],
     queryFn: async () => {
       let cats: any[] = [];
-      const { data: rawCats, error: catsError } = await supabase
-        .from("product_categories")
-        .select("id, name, description, is_active, parent_id")
-        .eq("is_active", true)
-        .order("name");
+      const [catsRes, { data: prods }] = await Promise.all([
+        supabase
+          .from("product_categories")
+          .select("id, name, description, is_active, parent_id")
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("products")
+          .select("id, category_id, is_active")
+          .eq("is_active", true),
+      ]);
 
-      if (catsError) {
+      if (catsRes.error) {
         const { data: fallbackCats, error: fbError } = await supabase
           .from("product_categories")
           .select("id, name, description, is_active")
@@ -226,7 +232,7 @@ export function useInventoryData() {
         if (fbError) throw fbError;
         cats = (fallbackCats || []).map(c => ({ ...c, parent_id: null }));
       } else {
-        cats = rawCats || [];
+        cats = catsRes.data || [];
       }
 
       // Filtrar estrictamente categorías basura como "Prueba" y "Rosa"
@@ -234,12 +240,6 @@ export function useInventoryData() {
         const lower = (c.name || "").toLowerCase();
         return !lower.includes("prueba") && !lower.includes("rosa");
       });
-
-      // Conteo de productos asociados
-      const { data: prods } = await supabase
-        .from("products")
-        .select("id, category_id, is_active")
-        .eq("is_active", true);
 
       const allCats: ProductCategory[] = cleanCats.map(c => {
         const count = (prods || []).filter(p => p.category_id === c.id).length;

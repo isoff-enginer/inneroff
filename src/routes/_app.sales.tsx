@@ -76,9 +76,11 @@ function SalesPage() {
     if (prod) {
       const details = getProductPackagings(prod.name);
       const firstPkg = details.packagings[0];
-      setSelectedPkgId(firstPkg.id);
-      setPkgCount(1);
-      setAmount(String(firstPkg.packagePrice));
+      if (firstPkg) {
+        setSelectedPkgId(firstPkg.id);
+        setPkgCount(1);
+        setAmount(String(firstPkg.packagePrice));
+      }
     }
   };
 

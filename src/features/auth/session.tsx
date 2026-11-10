@@ -14,14 +14,44 @@ interface SessionContextValue {
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
+const SESSION_CACHE_KEY = "inneroff_session_cache_v1";
+
+function readCachedUser(): SessionUser | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(SESSION_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && parsed.id && parsed.role) return parsed as SessionUser;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function writeCachedUser(u: SessionUser | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (u) {
+      window.localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(u));
+    } else {
+      window.localStorage.removeItem(SESSION_CACHE_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
 export function SessionProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<SessionUser | null>(() => readCachedUser());
+  const [isLoading, setIsLoading] = useState<boolean>(() => !readCachedUser());
 
   useEffect(() => {
     let mounted = true;
+    let lastFetchedUserId: string | null = null;
 
     async function fetchProfile(userId: string) {
+      lastFetchedUserId = userId;
       try {
         const [
           { data: profile, error },
@@ -40,6 +70,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (profile) {
           if (profile.status !== "active") {
             toast.error("Tu cuenta no está activa.");
+            writeCachedUser(null);
             await supabase.auth.signOut();
             if (mounted) {
               setUser(null);
@@ -49,7 +80,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
           }
 
           if (mounted) {
-            setUser({
+            const nextUser: SessionUser = {
               id: profile.id,
               fullName: profile.full_name,
               displayName: profile.display_name || undefined,
@@ -58,15 +89,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
               storeId: storeUser?.store_id || undefined,
               warehouseId: warehouseUser?.warehouse_id || undefined,
               factoryId: factoryUser?.factory_id || undefined,
-            });
-            
-            // Device registration logic has been temporarily removed to fix Vite build crawler issue.
+            };
+            setUser(nextUser);
+            writeCachedUser(nextUser);
           }
         }
       } catch (error) {
         console.error("Error fetching profile:", error);
-        toast.error("Error al obtener el perfil.");
-        if (mounted) setUser(null);
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -81,6 +110,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         if (session?.user) {
           await fetchProfile(session.user.id);
         } else {
+          writeCachedUser(null);
           if (mounted) {
             setUser(null);
             setIsLoading(false);
@@ -89,7 +119,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.error("Error loading session:", error);
         if (mounted) {
-          setUser(null);
           setIsLoading(false);
         }
       }
@@ -100,12 +129,15 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (event === "SIGNED_OUT") {
+          lastFetchedUserId = null;
+          writeCachedUser(null);
           if (mounted) {
             setUser(null);
             setIsLoading(false);
           }
         } else if ((event === "SIGNED_IN" || event === "PASSWORD_RECOVERY") && session) {
-          setIsLoading(true);
+          // Evitar doble consulta redundante si loadSession ya consultó este mismo usuario
+          if (lastFetchedUserId === session.user.id) return;
           await fetchProfile(session.user.id);
         }
       }
@@ -119,11 +151,10 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     setIsLoading(true);
-    console.log("[Auth] Signing out");
+    writeCachedUser(null);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
-      console.log("[Auth] Sign out successful");
     } catch (err: any) {
       console.error("[Auth] Sign out failed:", err);
       toast.error("Error al cerrar sesión.");

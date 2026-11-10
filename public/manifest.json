@@ -1,0 +1,32 @@
+{
+  "name": "Inner Off · Operaciones",
+  "short_name": "Inner Off",
+  "description": "Panel empresarial interno para operación de fábrica, bodegas y tiendas.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#0B0E14",
+  "theme_color": "#0B0E14",
+  "icons": [
+    {
+      "src": "/inner_Mesa%20de%20trabajo%201.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/inner_Mesa%20de%20trabajo%201.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/inner_Mesa%20de%20trabajo%201.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

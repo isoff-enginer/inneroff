@@ -25,11 +25,14 @@ export const Route = createFileRoute("/_app/profile")({
 
 function ProfilePage() {
   const { user, role } = useSession();
+  const fullName = user?.fullName ?? "Usuario";
+  const displayName = user?.displayName ?? fullName;
+  const roleLabel = role ? ROLE_LABELS[role] : "Operador";
 
   const fields = [
-    ["Nombre completo", user.fullName],
-    ["Nombre visible", user.displayName ?? user.fullName],
-    ["Rol", ROLE_LABELS[role]],
+    ["Nombre completo", fullName],
+    ["Nombre visible", displayName],
+    ["Rol", roleLabel],
     ["Estado", "Activo"],
   ] as const;
 
@@ -40,11 +43,11 @@ function ProfilePage() {
       <section className="surface max-w-2xl p-6">
         <div className="flex items-center gap-4">
           <Avatar className="size-14">
-            <AvatarFallback>{(user.displayName ?? user.fullName).slice(0, 2).toUpperCase()}</AvatarFallback>
+            <AvatarFallback>{displayName.slice(0, 2).toUpperCase()}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="text-base font-semibold">{user.fullName}</p>
-            <p className="text-sm text-muted-foreground">{ROLE_LABELS[role]}</p>
+            <p className="text-base font-semibold">{fullName}</p>
+            <p className="text-sm text-muted-foreground">{roleLabel}</p>
           </div>
         </div>
 

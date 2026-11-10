@@ -183,33 +183,13 @@ export function useDispatches() {
       if (centroStore) {
         locs.push({ id: centroStore.id, name: "Centro", type: "store" });
       } else {
-        try {
-          const { data: created } = await supabase
-            .from("stores")
-            .insert({ name: "Centro", code: "STR-CEN-01", status: "active" })
-            .select("id, name")
-            .single();
-          if (created) locs.push({ id: created.id, name: "Centro", type: "store" });
-          else locs.push({ id: "11111111-1111-1111-1111-111111111111", name: "Centro", type: "store" });
-        } catch {
-          locs.push({ id: "11111111-1111-1111-1111-111111111111", name: "Centro", type: "store" });
-        }
+        locs.push({ id: "11111111-1111-1111-1111-111111111111", name: "Centro", type: "store" });
       }
 
       if (laUsaStore) {
         locs.push({ id: laUsaStore.id, name: "La Usa", type: "store" });
       } else {
-        try {
-          const { data: created } = await supabase
-            .from("stores")
-            .insert({ name: "La Usa", code: "STR-USA-01", status: "active" })
-            .select("id, name")
-            .single();
-          if (created) locs.push({ id: created.id, name: "La Usa", type: "store" });
-          else locs.push({ id: "22222222-2222-2222-2222-222222222222", name: "La Usa", type: "store" });
-        } catch {
-          locs.push({ id: "22222222-2222-2222-2222-222222222222", name: "La Usa", type: "store" });
-        }
+        locs.push({ id: "22222222-2222-2222-2222-222222222222", name: "La Usa", type: "store" });
       }
 
       return locs;
@@ -218,14 +198,14 @@ export function useDispatches() {
 
   const createDispatchMutation = useMutation({
     mutationFn: async (payload: {
-      fromLocationType?: LocationType;
-      fromType?: LocationType;
-      fromId?: string;
-      toLocationType?: LocationType;
-      toType?: LocationType;
-      toId?: string;
-      items: { product_id?: string; productId?: string; quantity: number; unit_value?: number; unitValue?: number }[];
-      notes?: string;
+      fromLocationType?: LocationType | undefined;
+      fromType?: LocationType | undefined;
+      fromId?: string | undefined;
+      toLocationType?: LocationType | undefined;
+      toType?: LocationType | undefined;
+      toId?: string | undefined;
+      items: { product_id?: string | undefined; productId?: string | undefined; quantity: number; unit_value?: number | undefined; unitValue?: number | undefined }[];
+      notes?: string | null | undefined;
     }) => {
       const fromLoc = payload.fromLocationType || payload.fromType || "warehouse";
       const toLoc = payload.toLocationType || payload.toType || "store";

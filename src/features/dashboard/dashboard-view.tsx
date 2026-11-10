@@ -480,9 +480,11 @@ export function BossDashboard() {
     if (prod) {
       const details = getProductPackagings(prod.name);
       const firstPkg = details.packagings[0];
-      setRecaudoPkgId(firstPkg.id);
-      setRecaudoPkgCount(1);
-      setRecaudoAmount(String(firstPkg.packagePrice));
+      if (firstPkg) {
+        setRecaudoPkgId(firstPkg.id);
+        setRecaudoPkgCount(1);
+        setRecaudoAmount(String(firstPkg.packagePrice));
+      }
     }
   };
 
@@ -510,14 +512,6 @@ export function BossDashboard() {
       }
     }
   };
-
-  if (isDashboardLoading || isInventoryLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#F8FAFC]">
-        <div className="size-8 animate-spin rounded-full border-3 border-slate-900 border-t-transparent" />
-      </div>
-    );
-  }
 
   // Cálculos para el Donut SVG Minimalista (inspirado en la captura del usuario)
   const totalLiq = salesBreakdown.totalVentas || 0;
@@ -561,12 +555,12 @@ export function BossDashboard() {
           <div className="flex items-center gap-2">
             <Link 
               to="/profile" 
-              className="size-11 rounded-full overflow-hidden border border-white/20 shadow-sm bg-slate-800 active:scale-95 transition-transform"
+              className="size-11 rounded-full overflow-hidden border border-white/20 shadow-sm bg-[#c3d200] active:scale-95 transition-transform"
               title="Perfil"
             >
               <img 
-                src={user?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80"} 
-                alt="Usuario" 
+                src={user?.avatarUrl || "/inner_Mesa de trabajo 1.svg"} 
+                alt="Inner Off" 
                 className="size-full object-cover"
               />
             </Link>
@@ -1098,7 +1092,7 @@ export function BossDashboard() {
                       </div>
 
                       <span className="text-[11px] text-slate-400 font-bold mt-0.5">
-                        {mainPkg.label} · ${mainPkg.packagePrice.toLocaleString()}
+                        {mainPkg?.label || "Unidad"} · ${(mainPkg?.packagePrice || details.unitPrice).toLocaleString()}
                       </span>
 
                       {isBlocked ? (

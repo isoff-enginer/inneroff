@@ -56,39 +56,41 @@ export function useProductLiquidation() {
   const query = useQuery({
     queryKey: ["product_liquidation_and_locks"],
     queryFn: async () => {
-      // 1. Obtener todos los despachos a tiendas
-      const { data: dispatchesData, error: dispError } = await supabase
-        .from("dispatches")
-        .select(`
-          id,
-          status,
-          to_location_type,
-          dispatch_items (
-            product_id,
-            quantity,
-            unit_value,
-            total_value,
-            products (name)
-          )
-        `)
-        .eq("to_location_type", "store")
-        .in("status", ["dispatched", "received"]);
+      // 1 & 2. Obtener en paralelo todos los despachos a tiendas y todos los pagos confirmados
+      const [
+        { data: dispatchesData, error: dispError },
+        { data: paymentsData, error: payError },
+      ] = await Promise.all([
+        supabase
+          .from("dispatches")
+          .select(`
+            id,
+            status,
+            to_location_type,
+            dispatch_items (
+              product_id,
+              quantity,
+              unit_value,
+              total_value,
+              products (name)
+            )
+          `)
+          .eq("to_location_type", "store")
+          .in("status", ["dispatched", "received"]),
+        supabase
+          .from("payments")
+          .select(`
+            id,
+            amount,
+            status,
+            notes,
+            category_id,
+            product_categories (name)
+          `)
+          .eq("status", "confirmed"),
+      ]);
 
       if (dispError) throw dispError;
-
-      // 2. Obtener todos los pagos confirmados
-      const { data: paymentsData, error: payError } = await supabase
-        .from("payments")
-        .select(`
-          id,
-          amount,
-          status,
-          notes,
-          category_id,
-          product_categories (name)
-        `)
-        .eq("status", "confirmed");
-
       if (payError) throw payError;
 
       // Estructura base para los 9 productos
@@ -140,8 +142,9 @@ export function useProductLiquidation() {
         // Revisar si el pago fue por producto individual
         let matchedProduct = false;
         for (const name of CANONICAL_9_NAMES) {
-          if (notes.includes(name.toLowerCase())) {
-            statusMap[name].totalPaidVal += amount;
+          const itemStatus = statusMap[name];
+          if (itemStatus && notes.includes(name.toLowerCase())) {
+            itemStatus.totalPaidVal += amount;
             matchedProduct = true;
             break;
           }
@@ -150,18 +153,18 @@ export function useProductLiquidation() {
         // Si fue pago general de categoría
         if (!matchedProduct) {
           if (catName.toLowerCase().includes("blanco") || notes.includes("blanco")) {
-            categoryGeneralPaid["Blanco"] += amount;
+            categoryGeneralPaid["Blanco"] = (categoryGeneralPaid["Blanco"] || 0) + amount;
           } else if (catName.toLowerCase().includes("verde") || notes.includes("verde")) {
-            categoryGeneralPaid["Verde"] += amount;
+            categoryGeneralPaid["Verde"] = (categoryGeneralPaid["Verde"] || 0) + amount;
           } else {
-            categoryGeneralPaid["Productos adicionales"] += amount;
+            categoryGeneralPaid["Productos adicionales"] = (categoryGeneralPaid["Productos adicionales"] || 0) + amount;
           }
         }
       });
 
       // Distribuir pagos generales de categoría entre los productos de esa categoría que tengan deuda
       Object.keys(categoryGeneralPaid).forEach((catGroup) => {
-        let remainingGeneral = categoryGeneralPaid[catGroup];
+        let remainingGeneral = categoryGeneralPaid[catGroup] || 0;
         if (remainingGeneral <= 0) return;
 
         const prodsInCat = Object.values(statusMap).filter((p) => p.category === catGroup);
