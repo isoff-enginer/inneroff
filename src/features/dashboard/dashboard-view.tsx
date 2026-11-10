@@ -1160,28 +1160,6 @@ export function BossDashboard() {
         </div>
 
       </div>
-              <span className="text-[14px] font-black text-slate-900">Ver Productos</span>
-            </div>
-            <div className="size-9 rounded-full bg-slate-100 flex items-center justify-center">
-              <Package className="size-4 text-slate-900" />
-            </div>
-          </Link>
-
-          <Link 
-            to="/dispatches" 
-            className="flex items-center justify-between p-4 rounded-3xl bg-white border border-slate-200/80 shadow-xs hover:border-slate-400 transition-all"
-          >
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Operación</span>
-              <span className="text-[14px] font-black text-slate-900">Despachos</span>
-            </div>
-            <div className="size-9 rounded-full bg-slate-900 flex items-center justify-center">
-              <ArrowRight className="size-4 text-white" />
-            </div>
-          </Link>
-        </div>
-
-      </div>
 
       {/* ======================================================== */}
       {/* DRAWER: NUEVO DESPACHO CON PRESENTACIONES Y EMPAQUES     */}

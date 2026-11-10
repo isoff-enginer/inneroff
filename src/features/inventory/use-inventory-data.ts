@@ -575,14 +575,25 @@ export function useInventoryData() {
 
   // Mutación: Crear Categoría o Subcategoría
   const createCategoryMutation = useMutation({
-    mutationFn: async ({ name, description, parentId }: { name: string; description?: string; parentId?: string | null }) => {
+    mutationFn: async ({
+      name,
+      description,
+      parentId,
+      parent_id,
+    }: {
+      name: string;
+      description?: string | null | undefined;
+      parentId?: string | null | undefined;
+      parent_id?: string | null | undefined;
+    }) => {
+      const resolvedParent = parentId !== undefined ? parentId : parent_id;
       const payload: any = {
         name: name.trim(),
         description: description?.trim() || null,
         is_active: true
       };
-      if (parentId) {
-        payload.parent_id = parentId;
+      if (resolvedParent) {
+        payload.parent_id = resolvedParent;
       }
 
       let resError: any = null;
@@ -612,13 +623,26 @@ export function useInventoryData() {
 
   // Mutación: Actualizar Categoría o Subcategoría
   const updateCategoryMutation = useMutation({
-    mutationFn: async ({ id, name, description, parentId }: { id: string; name?: string; description?: string; parentId?: string | null }) => {
+    mutationFn: async ({
+      id,
+      name,
+      description,
+      parentId,
+      parent_id,
+    }: {
+      id: string;
+      name?: string | undefined;
+      description?: string | null | undefined;
+      parentId?: string | null | undefined;
+      parent_id?: string | null | undefined;
+    }) => {
+      const resolvedParent = parentId !== undefined ? parentId : parent_id;
       const payload: any = {
         updated_at: new Date().toISOString()
       };
       if (name !== undefined) payload.name = name.trim();
-      if (description !== undefined) payload.description = description.trim() || null;
-      if (parentId !== undefined) payload.parent_id = parentId;
+      if (description !== undefined) payload.description = description ? description.trim() : null;
+      if (resolvedParent !== undefined) payload.parent_id = resolvedParent;
 
       const { error } = await supabase.from("product_categories").update(payload).eq("id", id);
       if (error) throw error;
@@ -653,12 +677,12 @@ export function useInventoryData() {
     mutationFn: async (data: {
       name: string;
       category_id: string;
-      subcategory_id?: string | null;
+      subcategory_id?: string | null | undefined;
       unit_value: number;
-      cost_value?: number;
-      unit_name?: string;
-      sku?: string;
-      description?: string;
+      cost_value?: number | undefined;
+      unit_name?: string | undefined;
+      sku?: string | null | undefined;
+      description?: string | null | undefined;
     }) => {
       const payload: any = {
         name: data.name.trim(),
@@ -729,14 +753,14 @@ export function useInventoryData() {
   const updateProductMutation = useMutation({
     mutationFn: async (data: {
       id: string;
-      name?: string;
-      category_id?: string;
-      subcategory_id?: string | null;
-      unit_value?: number;
-      cost_value?: number;
-      unit_name?: string;
-      sku?: string;
-      description?: string;
+      name?: string | undefined;
+      category_id?: string | undefined;
+      subcategory_id?: string | null | undefined;
+      unit_value?: number | undefined;
+      cost_value?: number | undefined;
+      unit_name?: string | undefined;
+      sku?: string | null | undefined;
+      description?: string | null | undefined;
     }) => {
       const updatePayload: any = {};
       if (data.name !== undefined) updatePayload.name = data.name.trim();
