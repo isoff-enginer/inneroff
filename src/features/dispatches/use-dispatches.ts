@@ -176,11 +176,16 @@ export function useDispatches() {
       (factories || []).forEach(f => locs.push({ id: f.id, name: f.name, type: "factory" }));
       (warehouses || []).forEach(w => locs.push({ id: w.id, name: w.name, type: "warehouse" }));
       
-      const stores = storesResult?.data || [];
-      if (stores.length > 0) {
-        stores.forEach(s => locs.push({ id: s.id, name: s.name, type: "store" }));
+      const rawStores = storesResult?.data || [];
+      const validStores = rawStores.filter((s: any) => {
+        const lower = (s.name || "").toLowerCase();
+        return !lower.includes("prueba") && (lower.includes("centro") || lower.includes("usa"));
+      });
+
+      if (validStores.length > 0) {
+        validStores.forEach((s: any) => locs.push({ id: s.id, name: s.name, type: "store" }));
       } else {
-        // Tiendas requeridas: Centro y La Usa
+        // Tiendas requeridas oficiales: Centro y La Usa
         locs.push({ id: "store-centro", name: "Centro", type: "store" });
         locs.push({ id: "store-la-usa", name: "La Usa", type: "store" });
       }

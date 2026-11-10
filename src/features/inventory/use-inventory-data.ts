@@ -302,6 +302,19 @@ export function useInventoryData() {
         data = prodsData || [];
       }
 
+      // 9 Productos Canónicos Oficiales (Blanco, Verde, Productos adicionales)
+      const OFFICIAL_9_PRODUCTS = [
+        { name: "Mamitas", categoryName: "Blanco", price: 4400, sku: "BLA-MAM-01", unit_name: "Unidad", description: "Bomba: 44.000 | Unidad: 4.400" },
+        { name: "Tornillo", categoryName: "Blanco", price: 5142, sku: "BLA-TOR-01", unit_name: "Unidad", description: "Bomba: 36.000 | Unidad: 5.142" },
+        { name: "Lisos", categoryName: "Verde", price: 3400, sku: "VER-LIS-01", unit_name: "Unidad", description: "Balón: 255.000 | Paquete: 17.000 | Unidad: 3.400" },
+        { name: "Largos", categoryName: "Verde", price: 4000, sku: "VER-LAR-01", unit_name: "Unidad", description: "Balón: 300.000 | Paquete: 20.000 | Unidad: 4.000" },
+        { name: "Minis", categoryName: "Verde", price: 1571, sku: "VER-MIN-01", unit_name: "Unidad", description: "Balón: 110.000 | Paquete: 11.000 | Unidad: 1.571" },
+        { name: "Baldes", categoryName: "Productos adicionales", price: 8000, sku: "ADI-BAL-01", unit_name: "Unidad", description: "Unidad: 8.000" },
+        { name: "Rojas", categoryName: "Productos adicionales", price: 8000, sku: "ADI-ROJ-01", unit_name: "Unidad", description: "Unidad: 8.000" },
+        { name: "Flores", categoryName: "Productos adicionales", price: 8000, sku: "ADI-FLO-01", unit_name: "Unidad", description: "Unidad: 8.000" },
+        { name: "Pre-roll", categoryName: "Productos adicionales", price: 8000, sku: "ADI-PRE-01", unit_name: "Unidad", description: "Unidad: 8.000" },
+      ];
+
       // Deduplicar productos por nombre canónico
       const seenCanonical = new Map<string, any>();
       (data || []).forEach(p => {
@@ -316,7 +329,25 @@ export function useInventoryData() {
         }
       });
 
-      return Array.from(seenCanonical.values());
+      // Garantizar que si Rojas, Flores o cualquier otro de los 9 oficiales falta en la BD, se inyecte siempre
+      OFFICIAL_9_PRODUCTS.forEach(off => {
+        if (!seenCanonical.has(off.name)) {
+          seenCanonical.set(off.name, {
+            id: `prod-${off.name.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+            name: off.name,
+            category_id: `cat-${off.categoryName.toLowerCase().replace(/[^a-z0-9]/g, "-")}`,
+            unit_value: off.price,
+            cost_value: 0,
+            sku: off.sku,
+            unit_name: off.unit_name,
+            description: off.description,
+            is_active: true,
+            product_categories: { id: `cat-${off.categoryName.toLowerCase()}`, name: off.categoryName }
+          });
+        }
+      });
+
+      return OFFICIAL_9_PRODUCTS.map(off => seenCanonical.get(off.name)!);
     },
     enabled: !!user,
   });

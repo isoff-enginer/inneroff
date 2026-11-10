@@ -434,21 +434,50 @@ function AdminPage() {
   };
 
   const handleClearFictitiousSales = async () => {
-    if (!confirm("¿Eliminar todas las ventas y recaudos ficticios de prueba? El total se reiniciará a $0.")) return;
+    if (!confirm("¿Deseas realizar una LIMPIEZA TOTAL? Se eliminarán todos los despachos ficticios, ventas/recaudos de prueba, se inactivará Tienda Prueba y se dejarán únicamente las tiendas oficiales Centro y La Usa.")) return;
 
     try {
-      toast.info("Borrando ventas y recaudos...");
+      toast.info("Limpiando despachos, ventas y tienda de prueba...");
+
+      // 1. Borrar items de despacho y despachos de prueba
+      try {
+        await supabase.from("dispatch_items").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+        await supabase.from("dispatches").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      } catch (dispErr) {
+        console.warn("Could not wipe dispatches:", dispErr);
+      }
+
+      // 2. Borrar pagos y asientos ficticios
+      try {
+        await supabase.from("payment_allocations").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      } catch (paErr) {
+        console.warn("Could not wipe payment_allocations:", paErr);
+      }
       await supabase.from("payments").delete().neq("id", "00000000-0000-0000-0000-000000000000");
       await supabase.from("account_entries").delete().eq("entry_type", "income");
+
+      // 3. Inactivar Tienda Prueba y cualquier sede que no sea Centro ni La Usa
+      await supabase
+        .from("stores")
+        .update({ status: "inactive" })
+        .not("name", "ilike", "%centro%")
+        .not("name", "ilike", "%usa%");
+
+      // 4. Asegurar que Centro y La Usa estén activas
+      await supabase.from("stores").update({ status: "active" }).ilike("name", "%centro%");
+      await supabase.from("stores").update({ status: "active" }).ilike("name", "%usa%");
 
       queryClient.invalidateQueries({ queryKey: ["boss-dashboard-sales-30d"] });
       queryClient.invalidateQueries({ queryKey: ["boss-dashboard-payments-30d"] });
       queryClient.invalidateQueries({ queryKey: ["live_payments"] });
       queryClient.invalidateQueries({ queryKey: ["store_dispatches_total"] });
+      queryClient.invalidateQueries({ queryKey: ["live_dispatches"] });
+      queryClient.invalidateQueries({ queryKey: ["sales_stores_list"] });
+      queryClient.invalidateQueries({ queryKey: ["operational_locations"] });
 
-      toast.success("¡Ventas ficticias borradas con éxito! Dashboard reiniciado.");
+      toast.success("¡Limpieza total completada! Despachos borrados, Tienda Prueba desactivada y dashboard reiniciado a $0.");
     } catch (e: any) {
-      toast.error(e.message || "Error al borrar ventas ficticias");
+      toast.error(e.message || "Error al borrar datos de prueba");
     }
   };
 

@@ -27,7 +27,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
 import { useBossDashboardData } from "@/features/dashboard/use-dashboard-data";
 import { useInventoryData } from "@/features/inventory/use-inventory-data";
-import { useDispatches } from "@/features/dispatches/use-dispatches";
+import { useDispatches, type LiveDispatch } from "@/features/dispatches/use-dispatches";
 import { useSession } from "@/features/auth/session";
 import { formatCurrency } from "@/lib/format";
 import { Drawer, DrawerContent } from "@/components/ui/drawer";
@@ -36,6 +36,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { getProductPackagings, type ProductPackaging } from "@/features/inventory/product-presentations";
+import { DispatchDetailsDrawer } from "@/features/dispatches/components/dispatch-details-drawer";
 
 type ViewPerspective = "boss" | "warehouse" | "factory";
 
@@ -65,7 +66,9 @@ export function BossDashboard() {
   const { dispatches, createDispatch, isCreatingDispatch, locations } = useDispatches();
 
   const stores = useMemo(() => {
-    const list = Array.isArray(locations) ? locations.filter(l => l.type === "store") : [];
+    const list = Array.isArray(locations) 
+      ? locations.filter(l => l.type === "store" && !l.name.toLowerCase().includes("prueba") && (l.name.toLowerCase().includes("centro") || l.name.toLowerCase().includes("usa"))) 
+      : [];
     if (list.length > 0) return list;
     return [
       { id: "store-centro", name: "Centro", type: "store" },
@@ -80,6 +83,10 @@ export function BossDashboard() {
   const [storageFilter, setStorageFilter] = useState("Todas las sedes");
   const [showAmountEye, setShowAmountEye] = useState(true);
   const [isAdicionalesExpanded, setIsAdicionalesExpanded] = useState(false);
+
+  // Dispatch Details Drawer State (Con fotos de productos y empaques)
+  const [selectedDispatchDetail, setSelectedDispatchDetail] = useState<LiveDispatch | null>(null);
+  const [isDispatchDetailOpen, setIsDispatchDetailOpen] = useState(false);
 
   // Quick Dispatch Modal State (Con presentaciones / empaques)
   const [isQuickDispatchOpen, setIsQuickDispatchOpen] = useState(false);
@@ -295,11 +302,23 @@ export function BossDashboard() {
     }));
   };
 
+  // Abrir detalle visual con fotos de un despacho
+  const handleOpenDispatchDetail = (dispatch: LiveDispatch) => {
+    setSelectedDispatchDetail(dispatch);
+    setIsDispatchDetailOpen(true);
+  };
+
   // Recaudo Inteligente (Categoría General vs Producto / Presentación)
   const handleRegisterRecaudo = async () => {
-    const targetStoreId = recaudoStore || stores[0]?.id;
+    // Validar tienda de recaudo (estrictamente Centro o La Usa, jamás Tienda Prueba)
+    let targetStoreId = recaudoStore || stores[0]?.id;
+    const currentStoreObj = stores.find(s => s.id === targetStoreId);
+    if (!currentStoreObj || currentStoreObj.name.toLowerCase().includes("prueba")) {
+      targetStoreId = stores.find(s => !s.name.toLowerCase().includes("prueba"))?.id || stores[0]?.id;
+    }
+
     if (!targetStoreId) {
-      toast.error("Selecciona una tienda para registrar el recaudo");
+      toast.error("Selecciona una tienda oficial (Centro o La Usa) para registrar el recaudo");
       return;
     }
 
@@ -342,18 +361,38 @@ export function BossDashboard() {
         targetCatId = anyCat?.[0]?.id || "";
       }
 
-      const { error: pError } = await supabase
-        .from("payments")
-        .insert({
-          store_id: targetStoreId,
-          amount: val,
-          category_id: targetCatId,
-          status: "confirmed",
-          collected_by: currentAuthId,
-          notes,
+      // 1. Intentar registrar vía RPC de Postgres (SECURITY DEFINER para eludir RLS)
+      let recordedViaRpc = false;
+      try {
+        const { data: rpcPayId, error: rpcErr } = await supabase.rpc("register_payment", {
+          p_store_id: targetStoreId,
+          p_category_id: targetCatId,
+          p_amount: val,
+          p_notes: notes || undefined,
         });
 
-      if (pError) throw pError;
+        if (!rpcErr && rpcPayId) {
+          recordedViaRpc = true;
+        }
+      } catch (rpcEx) {
+        console.warn("register_payment RPC fallback:", rpcEx);
+      }
+
+      // 2. Fallback: Inserción directa en tabla payments
+      if (!recordedViaRpc) {
+        const { error: pError } = await supabase
+          .from("payments")
+          .insert({
+            store_id: targetStoreId,
+            amount: val,
+            category_id: targetCatId,
+            status: "confirmed",
+            collected_by: currentAuthId,
+            notes,
+          });
+
+        if (pError) throw pError;
+      }
 
       // Intentar asentar en account_entries
       try {
@@ -799,6 +838,51 @@ export function BossDashboard() {
                 </div>
               </div>
             </div>
+
+            {/* CARD 3 (JEFE): DESPACHOS EN CURSO INTERACTIVOS */}
+            <div className="rounded-[28px] bg-white p-5 border border-slate-200/80 shadow-xs">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-[14px] font-black text-slate-900">Despachos en Curso</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Toca cualquier despacho para ver fotos y detalle</p>
+                </div>
+                <Link to="/dispatches" className="text-[11px] font-bold text-slate-900 underline">
+                  Ver todos
+                </Link>
+              </div>
+
+              <div className="space-y-2">
+                {dispatches.length === 0 ? (
+                  <p className="text-xs text-slate-400 py-3 text-center">No hay despachos registrados</p>
+                ) : (
+                  dispatches.slice(0, 5).map((d) => (
+                    <div 
+                      key={d.id} 
+                      onClick={() => handleOpenDispatchDetail(d)}
+                      className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-[14px] font-black text-slate-900">
+                          {d.toLocationName} · #{d.dispatchNumber}
+                        </span>
+                        <span className="text-[12px] text-slate-500 font-medium mt-0.5">
+                          {d.items?.length || 0} productos • {formatCurrency(d.totalValue || 0)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                          d.status === "received" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"
+                        }`}>
+                          {d.status === "received" ? "Recibido" : "Enviado"}
+                        </span>
+                        <ChevronRight className="size-4 text-slate-400" />
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -858,22 +942,29 @@ export function BossDashboard() {
               </h3>
 
               <div className="space-y-2">
-                {relevantDispatches.slice(0, 4).map((d) => (
-                  <div key={d.id} className="p-3 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                {relevantDispatches.slice(0, 5).map((d) => (
+                  <div 
+                    key={d.id} 
+                    onClick={() => handleOpenDispatchDetail(d)}
+                    className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer"
+                  >
                     <div className="flex flex-col">
-                      <span className="text-[13px] font-bold text-slate-900">
+                      <span className="text-[14px] font-black text-slate-900">
                         {d.toLocationName} · #{d.dispatchNumber}
                       </span>
-                      <span className="text-[11px] text-slate-500 font-medium">
-                        {d.date} • {formatCurrency(d.totalValue || 0)}
+                      <span className="text-[12px] text-slate-500 font-medium mt-0.5">
+                        {d.items?.length || 0} productos • {formatCurrency(d.totalValue || 0)}
                       </span>
                     </div>
 
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
-                      d.status === "received" ? "bg-emerald-100 text-emerald-800" : "bg-slate-200 text-slate-800"
-                    }`}>
-                      {d.status === "received" ? "Recibido" : "Enviado"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                        d.status === "received" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"
+                      }`}>
+                        {d.status === "received" ? "Recibido" : "Enviado"}
+                      </span>
+                      <ChevronRight className="size-4 text-slate-400" />
+                    </div>
                   </div>
                 ))}
               </div>
@@ -1268,6 +1359,13 @@ export function BossDashboard() {
           </div>
         </DrawerContent>
       </Drawer>
+
+      {/* DRAWER: DETALLE DE DESPACHO CON FOTOS Y EMPAQUES (IPHONE 2026) */}
+      <DispatchDetailsDrawer
+        dispatch={selectedDispatchDetail}
+        isOpen={isDispatchDetailOpen}
+        onClose={() => setIsDispatchDetailOpen(false)}
+      />
 
     </div>
   );

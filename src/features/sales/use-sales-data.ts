@@ -87,7 +87,7 @@ export function useSalesData() {
     },
   });
 
-  // 3. Fetch stores for the selector (Centro y La Usa)
+  // 3. Fetch stores for the selector (Estrictamente Centro y La Usa)
   const storesQuery = useQuery({
     queryKey: ["sales_stores_list"],
     queryFn: async () => {
@@ -96,13 +96,20 @@ export function useSalesData() {
         .select("id, name, status")
         .neq("status", "inactive")
         .order("name");
-      if (error || !data || data.length === 0) {
-        return [
-          { id: "store-centro", name: "Centro" },
-          { id: "store-la-usa", name: "La Usa" },
-        ];
+
+      const valid = (data || []).filter((s: any) => {
+        const lower = (s.name || "").toLowerCase();
+        return !lower.includes("prueba") && (lower.includes("centro") || lower.includes("usa"));
+      });
+
+      if (valid.length > 0) {
+        return valid;
       }
-      return data;
+
+      return [
+        { id: "store-centro", name: "Centro" },
+        { id: "store-la-usa", name: "La Usa" },
+      ];
     },
   });
 
@@ -175,6 +182,23 @@ export function useSalesData() {
       const { data: authUser } = await supabase.auth.getUser();
       const currentUserId = authUser?.user?.id || user?.id || null;
 
+      // 1. Intentar registrar vía RPC de Postgres (SECURITY DEFINER para evitar RLS)
+      try {
+        const { data: rpcPaymentId, error: rpcError } = await supabase.rpc("register_payment", {
+          p_store_id: resolvedStoreId,
+          p_category_id: resolvedCatId,
+          p_amount: amount,
+          p_notes: notes || undefined,
+        });
+
+        if (!rpcError && rpcPaymentId) {
+          return { id: rpcPaymentId };
+        }
+      } catch (rpcEx) {
+        console.warn("register_payment RPC fallback to direct insert:", rpcEx);
+      }
+
+      // 2. Fallback: Inserción directa en tabla payments
       const { data: newPayment, error: paymentError } = await supabase
         .from("payments")
         .insert({

@@ -20,6 +20,7 @@ import { useSalesData } from "@/features/sales/use-sales-data";
 import { useSession } from "@/features/auth/session";
 import { toast } from "sonner";
 import { getProductPackagings, type ProductPackaging } from "@/features/inventory/product-presentations";
+import { DispatchDetailsDrawer } from "@/features/dispatches/components/dispatch-details-drawer";
 
 export const Route = createFileRoute("/_app/dispatches")({
   head: () => ({
@@ -38,7 +39,9 @@ function DispatchesPage() {
   const { totalRecaudado } = useSalesData();
 
   const stores = useMemo(() => {
-    const list = Array.isArray(locations) ? locations.filter(l => l.type === "store") : [];
+    const list = Array.isArray(locations) 
+      ? locations.filter(l => l.type === "store" && !l.name.toLowerCase().includes("prueba") && (l.name.toLowerCase().includes("centro") || l.name.toLowerCase().includes("usa"))) 
+      : [];
     if (list.length > 0) return list;
     return [
       { id: "store-centro", name: "Centro", type: "store" },
@@ -501,70 +504,16 @@ function DispatchesPage() {
 
       </div>
 
-      {/* DRAWER: DETALLE DE DESPACHO */}
-      <Drawer open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DrawerContent className="bg-[#F8FAFC] border-t-0 px-5 pb-8">
-          {selectedDispatch && (
-            <div className="flex flex-col max-h-[85vh]">
-              <div className="py-3 border-b border-slate-200 mb-3 text-center">
-                <span className="text-[11px] font-black uppercase text-slate-400">Detalle de Envío</span>
-                <h2 className="text-2xl font-black text-slate-950">Despacho #{selectedDispatch.dispatchNumber}</h2>
-              </div>
-
-              <div className="space-y-3 flex-1 overflow-y-auto pb-3">
-                <div className="p-4 rounded-2xl bg-white border border-slate-200/80 space-y-2">
-                  <div className="flex justify-between text-[13px]">
-                    <span className="font-semibold text-slate-500">Origen:</span>
-                    <span className="font-black text-slate-900">{selectedDispatch.fromLocationName}</span>
-                  </div>
-                  <div className="flex justify-between text-[13px]">
-                    <span className="font-semibold text-slate-500">Destino:</span>
-                    <span className="font-black text-slate-900">{selectedDispatch.toLocationName}</span>
-                  </div>
-                  <div className="flex justify-between text-[13px]">
-                    <span className="font-semibold text-slate-500">Despachado por:</span>
-                    <span className="font-black text-slate-900">{selectedDispatch.createdByName || "Administración"}</span>
-                  </div>
-                  {selectedDispatch.receivedByName && (
-                    <div className="flex justify-between text-[13px]">
-                      <span className="font-semibold text-slate-500">Recibido por:</span>
-                      <span className="font-black text-emerald-700">{selectedDispatch.receivedByName}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-[13px] border-t border-slate-100 pt-2">
-                    <span className="font-semibold text-slate-500">Valor Total:</span>
-                    <span className="font-black text-slate-950 text-base">{formatCurrency(selectedDispatch.totalValue || 0)}</span>
-                  </div>
-                </div>
-
-                {selectedDispatch.items && selectedDispatch.items.length > 0 && (
-                  <div className="space-y-1.5">
-                    <span className="text-[12px] font-bold text-slate-400 uppercase">Productos incluidos:</span>
-                    {selectedDispatch.items.map((it: any) => (
-                      <div key={it.id} className="flex justify-between p-3 rounded-xl bg-white border border-slate-200 text-[13px]">
-                        <span className="font-bold text-slate-900">{it.productName || it.products?.name || "Producto"}</span>
-                        <span className="font-black text-slate-700">{it.quantity} unds</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {selectedDispatch.status === "dispatched" && (
-                  <div className="pt-2">
-                    <Button 
-                      onClick={handleReceiveDispatch}
-                      disabled={isReceivingDispatch}
-                      className="w-full h-14 rounded-2xl font-black text-[15px] bg-emerald-600 text-white hover:bg-emerald-700 shadow-md"
-                    >
-                      {isReceivingDispatch ? "Confirmando..." : "Confirmar y Recibir Despacho"}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </DrawerContent>
-      </Drawer>
+      {/* DRAWER: DETALLE DE DESPACHO CON FOTOS Y EMPAQUES (IPHONE 2026) */}
+      <DispatchDetailsDrawer
+        dispatch={selectedDispatch}
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        onReceive={async () => {
+          await handleReceiveDispatch();
+        }}
+        isReceiving={isReceivingDispatch}
+      />
 
       {/* DRAWER: CREAR NUEVO DESPACHO */}
       <Drawer open={isCreateOpen} onOpenChange={setIsCreateOpen}>
