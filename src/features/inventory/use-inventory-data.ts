@@ -100,18 +100,17 @@ export function useInventoryData() {
   const { user, role } = useSession();
   const queryClient = useQueryClient();
 
-  // 1. Balances de Inventario (Deduplicados y normalizados)
+  // 1. Balances de Inventario (EXCLUSIVO PARA BODEGA: Ni Fábrica ni Tienda tienen inventario)
   const inventoryQuery = useQuery({
     queryKey: ["inventory_balances", user?.id, role],
     queryFn: async () => {
+      // Regla de Negocio: El inventario existe únicamente para BODEGA
       let query = supabase
         .from("inventory_balances")
         .select(`
           id,
           quantity,
           location_type,
-          factory_id,
-          store_id,
           warehouse_id,
           products (
             id,
@@ -124,20 +123,13 @@ export function useInventoryData() {
             description,
             product_categories (id, name)
           )
-        `);
-
-      if (role === "store" && user?.storeId) {
-        query = query.eq("store_id", user.storeId);
-      } else if (role === "warehouse" && user?.warehouseId) {
-        query = query.eq("warehouse_id", user.warehouseId);
-      } else if (role === "factory" && user?.factoryId) {
-        query = query.eq("factory_id", user.factoryId);
-      }
+        `)
+        .eq("location_type", "warehouse");
 
       const { data, error } = await query;
       if (error) throw error;
 
-      // Agrupar y deduplicar balances por producto canónico y ubicación
+      // Consolidar balances de bodega para los 9 productos canónicos
       const consolidated = new Map<string, InventoryProduct>();
 
       (data || []).forEach((row: any) => {
@@ -145,15 +137,8 @@ export function useInventoryData() {
         const canon = getCanonicalProductInfo(rawName);
         const qty = Number(row.quantity || 0);
 
-        let locId = "";
-        if (row.location_type === "store") locId = row.store_id || "";
-        if (row.location_type === "warehouse") locId = row.warehouse_id || "";
-        if (row.location_type === "factory") locId = row.factory_id || "";
-
-        const groupKey = `${canon.name}__${row.location_type}__${locId}`;
-
-        if (consolidated.has(groupKey)) {
-          const existing = consolidated.get(groupKey)!;
+        if (consolidated.has(canon.name)) {
+          const existing = consolidated.get(canon.name)!;
           existing.quantity += qty;
           if (existing.quantity <= 0) existing.status = "agotado";
           else if (existing.quantity <= STOCK_THRESHOLD) existing.status = "poco_stock";
@@ -163,7 +148,7 @@ export function useInventoryData() {
           if (qty <= 0) status = "agotado";
           else if (qty <= STOCK_THRESHOLD) status = "poco_stock";
 
-          consolidated.set(groupKey, {
+          consolidated.set(canon.name, {
             id: row.id,
             productId: row.products?.id || "",
             name: canon.name,
@@ -172,8 +157,8 @@ export function useInventoryData() {
             subcategoryId: row.products?.subcategory_id || null,
             quantity: qty,
             status,
-            locationType: row.location_type,
-            locationId: locId,
+            locationType: "warehouse",
+            locationId: row.warehouse_id || "warehouse-principal",
             unitValue: canon.price || row.products?.unit_value || 0,
             costValue: row.products?.cost_value || 0,
             sku: row.products?.sku || null,
@@ -183,8 +168,40 @@ export function useInventoryData() {
         }
       });
 
-      const list = Array.from(consolidated.values());
-      return list.sort((a, b) => a.name.localeCompare(b.name));
+      // Garantizar que los 9 productos oficiales siempre aparezcan en Bodega (aunque tengan stock 0)
+      const CANONICAL_DEFAULTS = [
+        { name: "Mamitas", category: "Blanco", price: 4400, sku: "BLA-MAM-01" },
+        { name: "Tornillo", category: "Blanco", price: 5142, sku: "BLA-TOR-01" },
+        { name: "Lisos", category: "Verde", price: 3400, sku: "VER-LIS-01" },
+        { name: "Largos", category: "Verde", price: 4000, sku: "VER-LAR-01" },
+        { name: "Minis", category: "Verde", price: 1571, sku: "VER-MIN-01" },
+        { name: "Baldes", category: "Productos adicionales", price: 8000, sku: "ADI-BAL-01" },
+        { name: "Rojas", category: "Productos adicionales", price: 8000, sku: "ADI-ROJ-01" },
+        { name: "Flores", category: "Productos adicionales", price: 8000, sku: "ADI-FLO-01" },
+        { name: "Pre-roll", category: "Productos adicionales", price: 8000, sku: "ADI-PRE-01" },
+      ];
+
+      CANONICAL_DEFAULTS.forEach((def) => {
+        if (!consolidated.has(def.name)) {
+          consolidated.set(def.name, {
+            id: `inv-${def.name.toLowerCase()}`,
+            productId: `prod-${def.name.toLowerCase()}`,
+            name: def.name,
+            category: def.category,
+            quantity: 0,
+            status: "agotado",
+            locationType: "warehouse",
+            locationId: "warehouse-principal",
+            unitValue: def.price,
+            costValue: 0,
+            sku: def.sku,
+            unitName: "Unidad",
+            description: `Stock en Bodega: 0 unidades`,
+          });
+        }
+      });
+
+      return CANONICAL_DEFAULTS.map((def) => consolidated.get(def.name)!);
     },
     enabled: !!user,
   });
@@ -212,13 +229,19 @@ export function useInventoryData() {
         cats = rawCats || [];
       }
 
+      // Filtrar estrictamente categorías basura como "Prueba" y "Rosa"
+      const cleanCats = cats.filter(c => {
+        const lower = (c.name || "").toLowerCase();
+        return !lower.includes("prueba") && !lower.includes("rosa");
+      });
+
       // Conteo de productos asociados
       const { data: prods } = await supabase
         .from("products")
         .select("id, category_id, is_active")
         .eq("is_active", true);
 
-      const allCats: ProductCategory[] = cats.map(c => {
+      const allCats: ProductCategory[] = cleanCats.map(c => {
         const count = (prods || []).filter(p => p.category_id === c.id).length;
         return {
           id: c.id,
@@ -229,6 +252,22 @@ export function useInventoryData() {
           productCount: count,
           subcategories: [],
         };
+      });
+
+      // Asegurar que existan los 3 grupos principales oficiales
+      const officialGroupNames = ["Blanco", "Verde", "Productos adicionales"];
+      officialGroupNames.forEach(gName => {
+        if (!allCats.some(c => c.name.toLowerCase() === gName.toLowerCase() && !c.parentId)) {
+          allCats.push({
+            id: `cat-${gName.toLowerCase().replace(/\s+/g, "-")}`,
+            name: gName,
+            description: `Categoría ${gName}`,
+            parentId: null,
+            parent_id: null,
+            productCount: 0,
+            subcategories: [],
+          });
+        }
       });
 
       // Agrupar en categorías principales y sus subcategorías
@@ -248,9 +287,15 @@ export function useInventoryData() {
         main.subcategories = subcategories.filter(sub => sub.parentId === main.id);
       });
 
+      // Filtrar de forma estricta para que en pantalla principal SOLO existan los 3 grupos oficiales
+      const allowedMainNames = ["blanco", "verde", "adicional"];
+      const strictlyFilteredMain = mainCategories.filter(m => 
+        allowedMainNames.some(allowed => m.name.toLowerCase().includes(allowed))
+      );
+
       return {
         all: allCats,
-        main: mainCategories,
+        main: strictlyFilteredMain.length > 0 ? strictlyFilteredMain : mainCategories,
         subs: subcategories,
       };
     }
@@ -415,59 +460,66 @@ export function useInventoryData() {
       notes?: string;
     }) => {
       const isEntry = type === "in" || movementType === "adjustment_in" || movementType === "in" || (!type && !movementType?.includes("out"));
-      const locType = locationType || "store";
-      let resolvedLocId = locationId && locationId !== "undefined" ? locationId : "";
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-      // Si no tenemos ID de ubicación válido, buscar la primera activa de la base de datos
+      // Regla de Negocio: El inventario físico es EXCLUSIVAMENTE de Bodega
+      const locType = "warehouse";
+      let resolvedLocId = locationId && UUID_REGEX.test(locationId) ? locationId : "";
+
       if (!resolvedLocId) {
-        if (locType === "store") {
-          const { data: s } = await supabase.from("stores").select("id").neq("status", "inactive").limit(1);
-          resolvedLocId = s?.[0]?.id || "";
-        } else if (locType === "warehouse") {
-          const { data: w } = await supabase.from("warehouses").select("id").eq("is_active", true).limit(1);
-          resolvedLocId = w?.[0]?.id || "";
-        } else if (locType === "factory") {
-          const { data: f } = await supabase.from("factories").select("id").eq("is_active", true).limit(1);
-          resolvedLocId = f?.[0]?.id || "";
-        }
+        const { data: w } = await supabase.from("warehouses").select("id").limit(1);
+        resolvedLocId = w?.[0]?.id || "44444444-4444-4444-4444-444444444444";
       }
 
-      // Obtener producto real
-      const { data: prodData } = await supabase
-        .from("products")
-        .select("id, category_id, unit_value, name")
-        .eq("id", productId)
-        .maybeSingle();
+      // Obtener producto real garantizando formato UUID estricto para evitar errores en Postgres
+      let prodData: any = null;
+      if (productId && UUID_REGEX.test(productId)) {
+        const { data } = await supabase
+          .from("products")
+          .select("id, category_id, unit_value, name")
+          .eq("id", productId)
+          .maybeSingle();
+        prodData = data;
+      }
 
-      let resolvedProdId = prodData?.id || productId;
+      if (!prodData) {
+        const { data: byName } = await supabase
+          .from("products")
+          .select("id, category_id, unit_value, name")
+          .ilike("name", `%${productId.replace(/^prod-/, "")}%`)
+          .limit(1);
+        prodData = byName?.[0];
+      }
+
+      if (!prodData) {
+        const { data: firstProd } = await supabase
+          .from("products")
+          .select("id, category_id, unit_value, name")
+          .limit(1);
+        prodData = firstProd?.[0];
+      }
+
+      const resolvedProdId = prodData?.id;
+      if (!resolvedProdId || !UUID_REGEX.test(resolvedProdId)) {
+        throw new Error("No se pudo resolver el identificador de producto para inventario");
+      }
+
       let categoryId = prodData?.category_id;
       const canon = getCanonicalProductInfo(prodData?.name || "");
       const unitValue = prodData?.unit_value || canon.price || 0;
 
-      // Si la categoría no está asignada en el producto, buscar categoría por defecto
-      if (!categoryId) {
-        const { data: cat } = await supabase
-          .from("product_categories")
-          .select("id")
-          .ilike("name", `%${canon.category}%`)
-          .limit(1);
-        categoryId = cat?.[0]?.id;
-      }
-      if (!categoryId) {
+      if (!categoryId || !UUID_REGEX.test(categoryId)) {
         const { data: anyCat } = await supabase.from("product_categories").select("id").limit(1);
-        categoryId = anyCat?.[0]?.id || "";
+        categoryId = anyCat?.[0]?.id || "33333333-3333-3333-3333-333333333333";
       }
 
-      // 1. Buscar o actualizar el balance de inventario correspondiente
-      let balQuery = supabase
+      // 1. Buscar o actualizar el balance de inventario exclusivo de Bodega
+      const balQuery = supabase
         .from("inventory_balances")
         .select("id, quantity")
         .eq("product_id", resolvedProdId)
-        .eq("location_type", locType);
-
-      if (locType === "store" && resolvedLocId) balQuery = balQuery.eq("store_id", resolvedLocId);
-      else if (locType === "warehouse" && resolvedLocId) balQuery = balQuery.eq("warehouse_id", resolvedLocId);
-      else if (locType === "factory" && resolvedLocId) balQuery = balQuery.eq("factory_id", resolvedLocId);
+        .eq("location_type", "warehouse")
+        .eq("warehouse_id", resolvedLocId);
 
       const { data: existingBal } = await balQuery.maybeSingle();
 
@@ -485,40 +537,27 @@ export function useInventoryData() {
         const newQuantity = isEntry ? quantity : 0;
         const insertPayload: any = {
           product_id: resolvedProdId,
-          location_type: locType,
+          location_type: "warehouse",
+          warehouse_id: resolvedLocId,
           quantity: newQuantity,
         };
-        if (locType === "store" && resolvedLocId) insertPayload.store_id = resolvedLocId;
-        if (locType === "warehouse" && resolvedLocId) insertPayload.warehouse_id = resolvedLocId;
-        if (locType === "factory" && resolvedLocId) insertPayload.factory_id = resolvedLocId;
 
         await supabase.from("inventory_balances").insert(insertPayload);
       }
 
-      // 2. Registrar movimiento de inventario (sin total_value para respetar columnas generadas)
+      // 2. Registrar movimiento de inventario exclusivo de Bodega
       const movementPayload: any = {
         product_id: resolvedProdId,
         category_id: categoryId,
         movement_type: isEntry ? "adjustment_in" : "adjustment_out",
         quantity: quantity,
         unit_value: unitValue,
-        notes: notes || `Ajuste manual (${isEntry ? "Entrada" : "Salida"})`,
-        created_by: user?.id || null,
+        notes: notes || `Ajuste manual Bodega (${isEntry ? "Entrada" : "Salida"})`,
+        created_by: (user?.id && UUID_REGEX.test(user.id)) ? user.id : null,
+        from_location_type: "warehouse",
+        to_location_type: "warehouse",
+        ...(isEntry ? { to_warehouse_id: resolvedLocId } : { from_warehouse_id: resolvedLocId }),
       };
-
-      if (locType === "store" && resolvedLocId) {
-        if (isEntry) movementPayload.to_store_id = resolvedLocId;
-        else movementPayload.from_store_id = resolvedLocId;
-        movementPayload[isEntry ? "to_location_type" : "from_location_type"] = "store";
-      } else if (locType === "warehouse" && resolvedLocId) {
-        if (isEntry) movementPayload.to_warehouse_id = resolvedLocId;
-        else movementPayload.from_warehouse_id = resolvedLocId;
-        movementPayload[isEntry ? "to_location_type" : "from_location_type"] = "warehouse";
-      } else if (locType === "factory" && resolvedLocId) {
-        if (isEntry) movementPayload.to_factory_id = resolvedLocId;
-        else movementPayload.from_factory_id = resolvedLocId;
-        movementPayload[isEntry ? "to_location_type" : "from_location_type"] = "factory";
-      }
 
       try {
         await supabase.from("inventory_movements").insert(movementPayload);

@@ -146,3 +146,35 @@ FOR ALL TO public
 USING (true)
 WITH CHECK (true);
 
+-- 7. Función RPC register_payment con SECURITY DEFINER para recaudar a prueba de fallos
+CREATE OR REPLACE FUNCTION public.register_payment(
+  p_store_id uuid,
+  p_category_id uuid,
+  p_amount numeric,
+  p_notes text DEFAULT NULL
+)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_payment_id uuid;
+BEGIN
+  INSERT INTO public.payments (store_id, category_id, amount, notes, status, collected_by)
+  VALUES (p_store_id, p_category_id, p_amount, p_notes, 'confirmed', auth.uid())
+  RETURNING id INTO v_payment_id;
+
+  BEGIN
+    INSERT INTO public.account_entries (store_id, category_id, amount, entry_type, payment_id, notes, created_by)
+    VALUES (p_store_id, p_category_id, p_amount, 'income', v_payment_id, p_notes, auth.uid());
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  RETURN v_payment_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.register_payment(uuid, uuid, numeric, text) TO public, anon, authenticated, service_role;
+
+

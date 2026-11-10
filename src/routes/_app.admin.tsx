@@ -467,6 +467,13 @@ function AdminPage() {
       await supabase.from("stores").update({ status: "active" }).ilike("name", "%centro%");
       await supabase.from("stores").update({ status: "active" }).ilike("name", "%usa%");
 
+      // 5. Inactivar categorías de prueba como Prueba y Rosa
+      try {
+        await supabase.from("product_categories").update({ is_active: false }).or("name.ilike.%prueba%,name.ilike.%rosa%");
+      } catch (catErr) {
+        console.warn("Could not deactivate test categories:", catErr);
+      }
+
       queryClient.invalidateQueries({ queryKey: ["boss-dashboard-sales-30d"] });
       queryClient.invalidateQueries({ queryKey: ["boss-dashboard-payments-30d"] });
       queryClient.invalidateQueries({ queryKey: ["live_payments"] });

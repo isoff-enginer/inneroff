@@ -21,6 +21,10 @@ import { useSession } from "@/features/auth/session";
 import { toast } from "sonner";
 import { getProductPackagings, type ProductPackaging } from "@/features/inventory/product-presentations";
 import { DispatchDetailsDrawer } from "@/features/dispatches/components/dispatch-details-drawer";
+import { useProductLiquidation } from "@/features/sales/use-product-liquidation";
+
+const DEFAULT_CENTRO_UUID = "11111111-1111-1111-1111-111111111111";
+const DEFAULT_LA_USA_UUID = "22222222-2222-2222-2222-222222222222";
 
 export const Route = createFileRoute("/_app/dispatches")({
   head: () => ({
@@ -37,6 +41,7 @@ function DispatchesPage() {
   const { dispatches, locations, isLoading, createDispatch, isCreatingDispatch, receiveDispatch, isReceivingDispatch } = useDispatches();
   const { allProducts } = useInventoryData();
   const { totalRecaudado } = useSalesData();
+  const { liquidationMap } = useProductLiquidation();
 
   const stores = useMemo(() => {
     const list = Array.isArray(locations) 
@@ -44,8 +49,8 @@ function DispatchesPage() {
       : [];
     if (list.length > 0) return list;
     return [
-      { id: "store-centro", name: "Centro", type: "store" },
-      { id: "store-la-usa", name: "La Usa", type: "store" },
+      { id: DEFAULT_CENTRO_UUID, name: "Centro", type: "store" },
+      { id: DEFAULT_LA_USA_UUID, name: "La Usa", type: "store" },
     ];
   }, [locations]);
   const warehouses = useMemo(() => Array.isArray(locations) ? locations.filter(l => l.type === "warehouse") : [], [locations]);
@@ -173,6 +178,15 @@ function DispatchesPage() {
     if (selectedItems.some(i => i.productId === productId)) return;
 
     const details = getProductPackagings(prod.name);
+
+    // REGLA ESTRICTA DE DESPACHOS: Si el producto tiene deuda pendiente de liquidar en tiendas,
+    // ni Fábrica ni Bodega pueden despacharlo hasta que esté 100% pagado.
+    const lock = liquidationMap[details.name];
+    if (lock?.isBlocked) {
+      toast.error(`🔒 Bloqueado: No se puede despachar ${details.name} hasta que la tienda liquide la totalidad pendiente de ${formatCurrency(lock.pendingVal)}`);
+      return;
+    }
+
     const defaultPkg = details.packagings[0] || {
       id: "unidad",
       label: "Unidad",
@@ -240,6 +254,18 @@ function DispatchesPage() {
     if (selectedItems.length === 0) {
       toast.error("Agrega al menos una presentación al despacho");
       return;
+    }
+
+    // REGLA CRÍTICA: Fábrica no puede despachar a Bodega si no se ha pagado la totalidad
+    if (fromType === "factory" || toType === "warehouse") {
+      for (const it of selectedItems) {
+        const details = getProductPackagings(it.name);
+        const lock = liquidationMap[details.name];
+        if (lock?.isBlocked) {
+          toast.error(`🔒 Bloqueo de Fábrica: No puedes despachar ${details.name} a Bodega porque la tienda tiene un saldo pendiente de liquidar de ${formatCurrency(lock.pendingVal)}. Deben pagar la totalidad primero.`);
+          return;
+        }
+      }
     }
 
     try {
@@ -476,11 +502,18 @@ function DispatchesPage() {
                       </span>
                     </div>
 
-                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
-                      isReceived ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-900 border border-slate-200'
-                    }`}>
-                      {isReceived ? "Recibido" : "Enviado"}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {d.toLocationType === "store" && (d.items || []).every(it => liquidationMap[getProductPackagings(it.productName).name]?.isFullyPaid) && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          ✓ Venta Completada
+                        </span>
+                      )}
+                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
+                        isReceived ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-900 border border-slate-200'
+                      }`}>
+                        {isReceived ? "Recibido" : "Enviado"}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] text-slate-400">
@@ -569,16 +602,25 @@ function DispatchesPage() {
               <div>
                 <label className="text-[11px] font-bold text-slate-500 block mb-1">Agregar Productos al Despacho</label>
                 <div className="flex gap-1.5 overflow-x-auto pb-2 scrollbar-hide">
-                  {allProducts.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      onClick={() => handleAddItem(p.id)}
-                      className="whitespace-nowrap px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-[12px] font-bold"
-                    >
-                      + {p.name}
-                    </button>
-                  ))}
+                  {allProducts.map((p) => {
+                    const details = getProductPackagings(p.name);
+                    const lock = liquidationMap[details.name];
+                    const isLocked = !!lock?.isBlocked;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => handleAddItem(p.id)}
+                        className={`whitespace-nowrap px-3 py-1.5 rounded-xl text-[12px] font-bold transition-all ${
+                          isLocked 
+                            ? "bg-rose-50 border border-rose-200 text-rose-700 opacity-80" 
+                            : "bg-slate-100 hover:bg-slate-200 text-slate-800"
+                        }`}
+                      >
+                        {isLocked ? `🔒 ${p.name} (Debe ${formatCurrency(lock.pendingVal)})` : `+ ${p.name}`}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 

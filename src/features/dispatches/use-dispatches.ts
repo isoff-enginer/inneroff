@@ -177,17 +177,39 @@ export function useDispatches() {
       (warehouses || []).forEach(w => locs.push({ id: w.id, name: w.name, type: "warehouse" }));
       
       const rawStores = storesResult?.data || [];
-      const validStores = rawStores.filter((s: any) => {
-        const lower = (s.name || "").toLowerCase();
-        return !lower.includes("prueba") && (lower.includes("centro") || lower.includes("usa"));
-      });
+      const centroStore = rawStores.find((s: any) => s.name?.toLowerCase().includes("centro"));
+      const laUsaStore = rawStores.find((s: any) => s.name?.toLowerCase().includes("usa"));
 
-      if (validStores.length > 0) {
-        validStores.forEach((s: any) => locs.push({ id: s.id, name: s.name, type: "store" }));
+      if (centroStore) {
+        locs.push({ id: centroStore.id, name: "Centro", type: "store" });
       } else {
-        // Tiendas requeridas oficiales: Centro y La Usa
-        locs.push({ id: "store-centro", name: "Centro", type: "store" });
-        locs.push({ id: "store-la-usa", name: "La Usa", type: "store" });
+        try {
+          const { data: created } = await supabase
+            .from("stores")
+            .insert({ name: "Centro", code: "STR-CEN-01", status: "active" })
+            .select("id, name")
+            .single();
+          if (created) locs.push({ id: created.id, name: "Centro", type: "store" });
+          else locs.push({ id: "11111111-1111-1111-1111-111111111111", name: "Centro", type: "store" });
+        } catch {
+          locs.push({ id: "11111111-1111-1111-1111-111111111111", name: "Centro", type: "store" });
+        }
+      }
+
+      if (laUsaStore) {
+        locs.push({ id: laUsaStore.id, name: "La Usa", type: "store" });
+      } else {
+        try {
+          const { data: created } = await supabase
+            .from("stores")
+            .insert({ name: "La Usa", code: "STR-USA-01", status: "active" })
+            .select("id, name")
+            .single();
+          if (created) locs.push({ id: created.id, name: "La Usa", type: "store" });
+          else locs.push({ id: "22222222-2222-2222-2222-222222222222", name: "La Usa", type: "store" });
+        } catch {
+          locs.push({ id: "22222222-2222-2222-2222-222222222222", name: "La Usa", type: "store" });
+        }
       }
 
       return locs;
@@ -211,30 +233,32 @@ export function useDispatches() {
       let toId = payload.toId || "";
       const notes = payload.notes || null;
 
-      // Respaldo de IDs válidos si no fueron provistos o vienen vacíos
-      if (!fromId || fromId === "undefined") {
+      // Respaldo y validación de IDs para garantizar formato UUID estricto
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      if (!UUID_REGEX.test(fromId)) {
         if (fromLoc === "factory") {
-          const { data: f } = await supabase.from("factories").select("id").eq("is_active", true).limit(1);
-          fromId = f?.[0]?.id || "";
+          const { data: f } = await supabase.from("factories").select("id").limit(1);
+          fromId = f?.[0]?.id || "33333333-3333-3333-3333-333333333333";
         } else if (fromLoc === "warehouse") {
-          const { data: w } = await supabase.from("warehouses").select("id").eq("is_active", true).limit(1);
-          fromId = w?.[0]?.id || "";
+          const { data: w } = await supabase.from("warehouses").select("id").limit(1);
+          fromId = w?.[0]?.id || "44444444-4444-4444-4444-444444444444";
         } else if (fromLoc === "store") {
-          const { data: s } = await supabase.from("stores").select("id").neq("status", "inactive").limit(1);
-          fromId = s?.[0]?.id || "";
+          const { data: s } = await supabase.from("stores").select("id").not("name", "ilike", "%prueba%").limit(1);
+          fromId = s?.[0]?.id || "11111111-1111-1111-1111-111111111111";
         }
       }
 
-      if (!toId || toId === "undefined") {
+      if (!UUID_REGEX.test(toId)) {
         if (toLoc === "factory") {
-          const { data: f } = await supabase.from("factories").select("id").eq("is_active", true).limit(1);
-          toId = f?.[0]?.id || "";
+          const { data: f } = await supabase.from("factories").select("id").limit(1);
+          toId = f?.[0]?.id || "33333333-3333-3333-3333-333333333333";
         } else if (toLoc === "warehouse") {
-          const { data: w } = await supabase.from("warehouses").select("id").eq("is_active", true).limit(1);
-          toId = w?.[0]?.id || "";
+          const { data: w } = await supabase.from("warehouses").select("id").limit(1);
+          toId = w?.[0]?.id || "44444444-4444-4444-4444-444444444444";
         } else if (toLoc === "store") {
-          const { data: s } = await supabase.from("stores").select("id").neq("status", "inactive").limit(1);
-          toId = s?.[0]?.id || "";
+          const { data: s } = await supabase.from("stores").select("id").not("name", "ilike", "%prueba%").limit(1);
+          toId = s?.[0]?.id || "11111111-1111-1111-1111-111111111111";
         }
       }
 
@@ -276,7 +300,7 @@ export function useDispatches() {
 
       const totalVal = normalizedItems.reduce((acc, it) => acc + (it.quantity * it.unit_value), 0);
 
-      // 1. Crear registro de despacho
+      // 1. Crear registro de despacho (NO pasar total_value ya que es GENERATED ALWAYS en PostgreSQL)
       const { data: newDisp, error: dispErr } = await supabase
         .from("dispatches")
         .insert({
@@ -285,7 +309,6 @@ export function useDispatches() {
           status: "dispatched",
           dispatched_at: new Date().toISOString(),
           created_by: user?.id,
-          total_value: totalVal,
           notes,
         })
         .select("id, dispatch_number")

@@ -18,6 +18,9 @@ export interface LivePayment {
   createdAt: string;
 }
 
+export const DEFAULT_CENTRO_UUID = "11111111-1111-1111-1111-111111111111";
+export const DEFAULT_LA_USA_UUID = "22222222-2222-2222-2222-222222222222";
+
 export function useSalesData() {
   const queryClient = useQueryClient();
   const { user } = useSession();
@@ -87,43 +90,86 @@ export function useSalesData() {
     },
   });
 
-  // 3. Fetch stores for the selector (Estrictamente Centro y La Usa)
+  // 3. Fetch stores for the selector (Estrictamente Centro y La Usa con UUIDs reales)
   const storesQuery = useQuery({
     queryKey: ["sales_stores_list"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("stores")
         .select("id, name, status")
-        .neq("status", "inactive")
         .order("name");
 
-      const valid = (data || []).filter((s: any) => {
-        const lower = (s.name || "").toLowerCase();
-        return !lower.includes("prueba") && (lower.includes("centro") || lower.includes("usa"));
-      });
+      const list = data || [];
+      const centroStore = list.find((s: any) => s.name?.toLowerCase().includes("centro"));
+      const laUsaStore = list.find((s: any) => s.name?.toLowerCase().includes("usa"));
 
-      if (valid.length > 0) {
-        return valid;
+      const finalStores: { id: string; name: string; status?: string }[] = [];
+
+      if (centroStore) {
+        finalStores.push(centroStore);
+      } else {
+        try {
+          const { data: created } = await supabase
+            .from("stores")
+            .insert({ name: "Centro", code: "STR-CEN-01", status: "active" })
+            .select("id, name, status")
+            .single();
+          if (created) finalStores.push(created);
+          else finalStores.push({ id: DEFAULT_CENTRO_UUID, name: "Centro", status: "active" });
+        } catch {
+          finalStores.push({ id: DEFAULT_CENTRO_UUID, name: "Centro", status: "active" });
+        }
       }
 
-      return [
-        { id: "store-centro", name: "Centro" },
-        { id: "store-la-usa", name: "La Usa" },
-      ];
+      if (laUsaStore) {
+        finalStores.push(laUsaStore);
+      } else {
+        try {
+          const { data: created } = await supabase
+            .from("stores")
+            .insert({ name: "La Usa", code: "STR-USA-01", status: "active" })
+            .select("id, name, status")
+            .single();
+          if (created) finalStores.push(created);
+          else finalStores.push({ id: DEFAULT_LA_USA_UUID, name: "La Usa", status: "active" });
+        } catch {
+          finalStores.push({ id: DEFAULT_LA_USA_UUID, name: "La Usa", status: "active" });
+        }
+      }
+
+      // Inactivar silenciosamente Tienda Prueba si existe en la base de datos
+      try {
+        await supabase.from("stores").update({ status: "inactive" }).ilike("name", "%prueba%");
+      } catch {
+        // Ignorar
+      }
+
+      return finalStores;
     },
   });
 
-  // 4. Fetch categories for the selector
+  // 4. Fetch categories for the selector (Estrictamente Blanco, Verde y Productos adicionales)
   const categoriesQuery = useQuery({
     queryKey: ["sales_categories_list"],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("product_categories")
         .select("id, name")
         .eq("is_active", true)
         .order("name");
-      if (error) throw error;
-      return data || [];
+
+      // Filtrar categorías basura como Prueba y Rosa
+      const cleanCats = (data || []).filter((c: any) => {
+        const lower = (c.name || "").toLowerCase();
+        return !lower.includes("prueba") && !lower.includes("rosa");
+      });
+
+      // Garantizar únicamente los 3 grupos requeridos
+      const officialGroups = ["Blanco", "Verde", "Productos adicionales"];
+      return officialGroups.map((gName) => {
+        const found = cleanCats.find((c: any) => c.name.toLowerCase() === gName.toLowerCase());
+        return found || { id: `cat-${gName.toLowerCase().replace(/\s+/g, "-")}`, name: gName };
+      });
     },
   });
 
@@ -169,14 +215,16 @@ export function useSalesData() {
       let resolvedStoreId = storeId || "";
       let resolvedCatId = categoryId || "";
 
-      if (!resolvedStoreId) {
-        const { data: s } = await supabase.from("stores").select("id").neq("status", "inactive").limit(1);
-        resolvedStoreId = s?.[0]?.id || "";
+      const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+      if (!UUID_REGEX.test(resolvedStoreId)) {
+        const { data: s } = await supabase.from("stores").select("id").not("name", "ilike", "%prueba%").limit(1);
+        resolvedStoreId = s?.[0]?.id || DEFAULT_CENTRO_UUID;
       }
 
-      if (!resolvedCatId) {
+      if (!UUID_REGEX.test(resolvedCatId)) {
         const { data: c } = await supabase.from("product_categories").select("id").limit(1);
-        resolvedCatId = c?.[0]?.id || "";
+        resolvedCatId = c?.[0]?.id || "33333333-3333-3333-3333-333333333333";
       }
 
       const { data: authUser } = await supabase.auth.getUser();

@@ -90,10 +90,9 @@ function InventoryPage() {
     return inventory.filter(item => {
       if (search && !item.name.toLowerCase().includes(search.toLowerCase())) return false;
       if (selectedCategory !== "all" && item.category.trim().toLowerCase() !== selectedCategory.toLowerCase()) return false;
-      if (locationFilter !== "all" && item.locationType !== locationFilter) return false;
       return true;
     });
-  }, [inventory, search, selectedCategory, locationFilter]);
+  }, [inventory, search, selectedCategory]);
 
   const handleOpenDrawer = (product: InventoryProduct) => {
     setDetailProduct(product);
@@ -208,10 +207,10 @@ function InventoryPage() {
   const activeProduct = inventory.find(p => p.id === selectedProductId);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28 font-sans">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-44 font-sans">
       <div className="mx-auto max-w-md px-5 pt-3 space-y-4">
         
-        {/* HEADER */}
+        {/* HEADER EXCLUSIVO BODEGA */}
         <header className="flex items-center justify-between py-2">
           <button 
             onClick={() => navigate({ to: "/dashboard" })}
@@ -220,15 +219,18 @@ function InventoryPage() {
             <ChevronLeft className="size-5" />
           </button>
 
-          <h1 className="text-lg font-black tracking-tight text-slate-950">
-            Items & Inventario
-          </h1>
+          <div className="flex flex-col items-center">
+            <h1 className="text-lg font-black tracking-tight text-slate-950">
+              Inventario de Bodega
+            </h1>
+            <span className="text-[11px] font-bold text-slate-400">Stock físico en Bodega Principal</span>
+          </div>
 
           <div className="flex items-center gap-2">
             <Link 
               to="/admin"
               className="flex size-10 items-center justify-center rounded-full bg-white border border-slate-200/80 shadow-xs text-slate-800 active:scale-95 transition-transform"
-              title="Panel Administrativo (Categorías y Subcategorías)"
+              title="Panel Administrativo"
             >
               <FolderTree className="size-4" />
             </Link>
@@ -243,41 +245,26 @@ function InventoryPage() {
           </div>
         </header>
 
-        {/* BUSCADOR Y BOTON DE FILTROS */}
-        <div className="flex items-center gap-2.5">
-          <div className="relative flex-1">
-            <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-              <Search className="size-4" />
-            </div>
-            <input 
-              type="text" 
-              className="block w-full pl-10 pr-3.5 py-3 rounded-2xl bg-white border border-slate-200/80 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-slate-900 shadow-xs transition-all"
-              placeholder="Buscar productos..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <button onClick={() => setSearch("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
-                <X className="size-4" />
-              </button>
-            )}
+        {/* BUSCADOR */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <Search className="size-4" />
           </div>
-
-          <button 
-            onClick={() => {
-              if (locationFilter === "all") setLocationFilter("warehouse");
-              else if (locationFilter === "warehouse") setLocationFilter("store");
-              else if (locationFilter === "store") setLocationFilter("factory");
-              else setLocationFilter("all");
-            }}
-            className="flex size-12 items-center justify-center rounded-2xl bg-white border border-slate-200/80 text-slate-800 shadow-xs active:scale-95 transition-transform shrink-0"
-            title={`Filtrar sede: ${locationFilter}`}
-          >
-            <SlidersHorizontal className="size-5" />
-          </button>
+          <input 
+            type="text" 
+            className="block w-full pl-10 pr-3.5 py-3 rounded-2xl bg-white border border-slate-200/80 text-[14px] text-slate-900 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-slate-900 shadow-xs transition-all"
+            placeholder="Buscar productos en bodega..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400">
+              <X className="size-4" />
+            </button>
+          )}
         </div>
 
-        {/* PILLS DE CATEGORÍAS HORIZONTALES */}
+        {/* PILLS DE CATEGORÍAS ESTRICTAS (BLANCO, VERDE, ADICIONALES) */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide pt-1">
           <button 
             onClick={() => setSelectedCategory("all")}
@@ -286,39 +273,15 @@ function InventoryPage() {
             Todos
           </button>
 
-          {categories.map((cat) => (
+          {["Blanco", "Verde", "Productos adicionales"].map((catName) => (
             <button 
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.name.trim().toLowerCase())}
-              className={`whitespace-nowrap px-4 py-2 rounded-2xl text-[13px] font-bold transition-colors ${selectedCategory === cat.name.trim().toLowerCase() ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200/80 text-slate-600'}`}
+              key={catName}
+              onClick={() => setSelectedCategory(catName.trim().toLowerCase())}
+              className={`whitespace-nowrap px-4 py-2 rounded-2xl text-[13px] font-bold transition-colors ${selectedCategory === catName.trim().toLowerCase() ? 'bg-slate-900 text-white shadow-xs' : 'bg-white border border-slate-200/80 text-slate-600'}`}
             >
-              {cat.name.trim()}
+              {catName}
             </button>
           ))}
-
-          {isBoss && (
-            <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
-              <span className="text-[11px] font-bold text-slate-400 uppercase">Sede:</span>
-              <button 
-                onClick={() => setLocationFilter("all")}
-                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold ${locationFilter === "all" ? "bg-slate-900 text-white" : "bg-white text-slate-600 border border-slate-200"}`}
-              >
-                Todas
-              </button>
-              <button 
-                onClick={() => setLocationFilter("warehouse")}
-                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold ${locationFilter === "warehouse" ? "bg-slate-900 text-white" : "bg-white text-slate-600 border border-slate-200"}`}
-              >
-                Bodega
-              </button>
-              <button 
-                onClick={() => setLocationFilter("store")}
-                className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold ${locationFilter === "store" ? "bg-slate-900 text-white" : "bg-white text-slate-600 border border-slate-200"}`}
-              >
-                Tienda
-              </button>
-            </div>
-          )}
         </div>
 
         {/* PRODUCT GRID (2 COLUMNAS) */}
@@ -383,7 +346,7 @@ function InventoryPage() {
                       ${item.unitValue.toLocaleString()}
                     </span>
 
-                    {/* Stock status pill */}
+                    {/* Stock en Bodega */}
                     <div className="flex items-center justify-between pt-1">
                       <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold ${
                         item.quantity > 10 
@@ -392,14 +355,12 @@ function InventoryPage() {
                             ? 'bg-amber-100 text-amber-900' 
                             : 'bg-rose-100 text-rose-900'
                       }`}>
-                        {item.quantity > 0 ? `Stock: ${item.quantity}` : "Agotado"}
+                        {item.quantity > 0 ? `Bodega: ${item.quantity}` : "Agotado"}
                       </span>
 
-                      {isBoss && (
-                        <span className={`text-[10px] font-bold capitalize ${isSelected ? 'text-slate-400' : 'text-slate-400'}`}>
-                          {item.locationType === "warehouse" ? "Bodega" : item.locationType === "store" ? "Tienda" : "Fábrica"}
-                        </span>
-                      )}
+                      <span className="text-[10px] font-bold text-slate-400">
+                        {item.unitName || "un"}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -410,32 +371,20 @@ function InventoryPage() {
 
       </div>
 
-      {/* FLOATING BOTTOM ACTION BAR */}
-      <div className="fixed bottom-20 inset-x-4 z-20 flex items-center justify-center pointer-events-none">
-        <div className="pointer-events-auto flex items-center gap-3 w-full max-w-md">
-          <button 
-            onClick={() => setIsCreateProdOpen(true)}
-            className="flex size-14 items-center justify-center rounded-2xl bg-slate-900 border border-slate-800 text-white shadow-lg active:scale-95 transition-transform shrink-0"
-            title="Nuevo producto"
-          >
-            <Plus className="size-6 stroke-[2.5]" />
-          </button>
-
-          <button 
-            onClick={() => {
-              if (activeProduct) {
-                handleOpenDrawer(activeProduct);
-              } else if (filteredInventory.length > 0) {
-                handleOpenDrawer(filteredInventory[0]);
-              }
-            }}
-            className="flex flex-1 items-center justify-between h-14 px-6 rounded-2xl bg-slate-900 text-white font-bold text-[15px] shadow-lg active:scale-[0.98] transition-all"
-          >
-            <span>{activeProduct ? `Mover "${activeProduct.name}"` : "Mover stock / Despachar"}</span>
-            <ArrowRight className="size-5" />
-          </button>
+      {/* FLOATING ACTION (Visible al seleccionar producto o para acción rápida) */}
+      {activeProduct && (
+        <div className="fixed bottom-20 inset-x-4 z-20 flex items-center justify-center pointer-events-none animate-in fade-in slide-in-from-bottom-2">
+          <div className="pointer-events-auto flex items-center gap-3 w-full max-w-md">
+            <button 
+              onClick={() => handleOpenDrawer(activeProduct)}
+              className="flex flex-1 items-center justify-between h-14 px-6 rounded-2xl bg-slate-900 text-white font-bold text-[15px] shadow-xl active:scale-[0.98] transition-all"
+            >
+              <span>Ajustar stock de "{activeProduct.name}"</span>
+              <ArrowRight className="size-5" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* DRAWER: DETALLE / ENTRADA Y SALIDA DE STOCK */}
       <Drawer open={isDetailDrawerOpen} onOpenChange={setIsDetailDrawerOpen}>
