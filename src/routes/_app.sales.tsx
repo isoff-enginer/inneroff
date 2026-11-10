@@ -154,52 +154,52 @@ function SalesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28 font-sans">
+    <div className="min-h-screen bg-[#0B0E14] text-white pb-36 font-sans">
       <div className="mx-auto max-w-md px-5 pt-3 space-y-4">
         
         {/* HEADER */}
         <header className="flex items-center justify-between py-2">
           <button 
             onClick={() => navigate({ to: "/dashboard" })}
-            className="flex size-10 items-center justify-center rounded-full bg-white border border-slate-200/80 shadow-xs text-slate-700 active:scale-95 transition-transform"
+            className="flex size-10 items-center justify-center rounded-full bg-[#161922] border border-white/10 shadow-xs text-white active:scale-95 transition-transform"
           >
             <ChevronLeft className="size-5" />
           </button>
 
-          <h1 className="text-lg font-black tracking-tight text-slate-950">
+          <h1 className="text-lg font-black tracking-tight text-white">
             Ventas & Recaudos
           </h1>
 
           <button 
             onClick={() => setIsNewRecaudoOpen(true)}
-            className="flex size-10 items-center justify-center rounded-full bg-slate-900 border border-slate-800 shadow-xs text-white active:scale-95 transition-transform"
+            className="flex size-10 items-center justify-center rounded-full bg-[#CCFF00] text-black font-black shadow-md active:scale-95 transition-transform"
             title="Nuevo Recaudo"
           >
-            <Plus className="size-5 stroke-[2.5]" />
+            <Plus className="size-5 stroke-[3]" />
           </button>
         </header>
 
-        {/* HERO CARD DE RECAUDOS (OBSIDIAN SLATE MINIMALISTA) */}
-        <div className="rounded-[32px] bg-slate-900 p-5 text-white shadow-sm space-y-3.5">
+        {/* HERO CARD DE RECAUDOS (OBSIDIAN & NEON MINIMALISTA) */}
+        <div className="rounded-[32px] bg-[#161922] border border-white/10 p-5 text-white shadow-xl space-y-3.5">
           <div className="flex items-center justify-between">
             <span className="text-[12px] font-extrabold uppercase tracking-wider text-slate-400">
               Resumen General de Dinero
             </span>
-            <span className="text-[10px] font-black bg-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+            <span className="text-[10px] font-black bg-[#CCFF00]/15 text-[#CCFF00] px-2.5 py-0.5 rounded-full border border-[#CCFF00]/30">
               ✓ {consolidation.completedProducts.length} Ventas Completadas
             </span>
           </div>
 
           <div className="grid grid-cols-2 gap-3 my-2">
-            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/10">
-              <span className="text-[11px] font-bold text-slate-300 uppercase">Dinero Recaudado</span>
-              <p className="text-2xl font-black text-emerald-400 mt-0.5">
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
+              <span className="text-[11px] font-bold text-slate-400 uppercase">Dinero Recaudado</span>
+              <p className="text-2xl font-black text-[#CCFF00] mt-0.5">
                 {formatCurrency(totalRecaudado)}
               </p>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-white/10 border border-white/10">
-              <span className="text-[11px] font-bold text-rose-300 uppercase">Dinero Faltante</span>
+            <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
+              <span className="text-[11px] font-bold text-slate-400 uppercase">Dinero Faltante</span>
               <p className="text-2xl font-black text-rose-400 mt-0.5">
                 {formatCurrency(totalFaltante)}
               </p>
@@ -207,24 +207,24 @@ function SalesPage() {
           </div>
 
           {/* Consolidación de Ventas Completadas al 100% con Montos Exactos */}
-          <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/30 space-y-2.5">
+          <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-2.5">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-[11px] font-bold text-emerald-300 uppercase block">Ventas Consolidadas al 100%</span>
+                <span className="text-[11px] font-bold text-[#CCFF00] uppercase block">Ventas Consolidadas al 100%</span>
                 <span className="text-[9px] text-slate-400">Total liquidado y cobrado en su totalidad</span>
               </div>
-              <span className="text-[18px] font-black text-emerald-400">{formatCurrency(consolidation.totalVentasCompletadas)}</span>
+              <span className="text-[18px] font-black text-[#CCFF00]">{formatCurrency(consolidation.totalVentasCompletadas)}</span>
             </div>
 
             {/* 3 Grupos Principales con Montos Exactos */}
-            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-emerald-500/20 text-center text-[10px]">
+            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/10 text-center text-[10px]">
               <div className="p-2 rounded-xl bg-white/5 border border-white/5">
                 <span className="text-slate-400 block uppercase font-bold">Blanco</span>
                 <span className="text-[12px] font-black text-white">{formatCurrency(consolidation.completedByGroup.blanco)}</span>
               </div>
               <div className="p-2 rounded-xl bg-white/5 border border-white/5">
                 <span className="text-slate-400 block uppercase font-bold">Verde</span>
-                <span className="text-[12px] font-black text-emerald-300">{formatCurrency(consolidation.completedByGroup.verde)}</span>
+                <span className="text-[12px] font-black text-blue-300">{formatCurrency(consolidation.completedByGroup.verde)}</span>
               </div>
               <div className="p-2 rounded-xl bg-white/5 border border-white/5">
                 <span className="text-slate-400 block uppercase font-bold">Adicionales</span>
@@ -255,7 +255,7 @@ function SalesPage() {
 
           <Button 
             onClick={() => setIsNewRecaudoOpen(true)}
-            className="w-full h-12 rounded-2xl bg-white text-slate-900 font-black text-[13px] hover:bg-slate-100 shadow-sm"
+            className="w-full h-12 rounded-2xl bg-[#CCFF00] text-black font-black text-[13px] hover:bg-[#b8e600] shadow-md active:scale-95 transition-transform"
           >
             <CircleDollarSign className="size-4 mr-1.5" /> Registrar Nuevo Recaudo
           </Button>

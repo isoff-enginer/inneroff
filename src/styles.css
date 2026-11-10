@@ -65,27 +65,27 @@
 :root {
   --radius: 1.5rem;
 
-  /* Fondo limpio y minimalista */
-  --background: #F8FAFC;
-  --foreground: #0F172A;
+  /* Fondo limpio y minimalista Obsidian */
+  --background: #0B0E14;
+  --foreground: #F8FAFC;
   
   /* Tarjetas y superficies */
-  --card: #FFFFFF;
-  --card-foreground: #0F172A;
-  --popover: #FFFFFF;
-  --popover-foreground: #0F172A;
+  --card: #161922;
+  --card-foreground: #F8FAFC;
+  --popover: #161922;
+  --popover-foreground: #F8FAFC;
 
-  /* Primario sobrio y elegante (Slate Obsidian) */
-  --primary: #0F172A;
-  --primary-foreground: #FFFFFF;
+  /* Primario sobrio y elegante (Electric Neon Lime #CCFF00) */
+  --primary: #CCFF00;
+  --primary-foreground: #0B0E14;
 
   /* Secundario y Muted */
-  --secondary: #F1F5F9;
-  --secondary-foreground: #0F172A;
-  --muted: #F1F5F9;
-  --muted-foreground: #64748B;
-  --accent: #0F172A;
-  --accent-foreground: #FFFFFF;
+  --secondary: #1F2430;
+  --secondary-foreground: #F8FAFC;
+  --muted: #1F2430;
+  --muted-foreground: #94A3B8;
+  --accent: #CCFF00;
+  --accent-foreground: #0B0E14;
 
   /* Estados */
   --destructive: #EF4444;
@@ -94,23 +94,23 @@
   --success-foreground: #FFFFFF;
   --warning: #F59E0B;
   --warning-foreground: #18181B;
-  --info: #3B82F6;
+  --info: #2A48EE;
   --info-foreground: #FFFFFF;
 
-  --border: rgba(15, 23, 42, 0.08);
-  --border-strong: rgba(15, 23, 42, 0.16);
-  --input: rgba(15, 23, 42, 0.08);
-  --ring: #0F172A;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --input: rgba(255, 255, 255, 0.08);
+  --ring: #CCFF00;
 
   /* Sidebar */
-  --sidebar: #FFFFFF;
-  --sidebar-foreground: #0F172A;
-  --sidebar-primary: #0F172A;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #F1F5F9;
-  --sidebar-accent-foreground: #18181B;
-  --sidebar-border: rgba(0, 0, 0, 0.06);
-  --sidebar-ring: #18181B;
+  --sidebar: #131620;
+  --sidebar-foreground: #F8FAFC;
+  --sidebar-primary: #CCFF00;
+  --sidebar-primary-foreground: #0B0E14;
+  --sidebar-accent: #1F2430;
+  --sidebar-accent-foreground: #F8FAFC;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: #CCFF00;
 }
 
 @layer base {
@@ -119,8 +119,8 @@
   }
 
   html, body {
-    background-color: #F8FAFC;
-    color: #0F172A;
+    background-color: #0B0E14;
+    color: #F8FAFC;
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;

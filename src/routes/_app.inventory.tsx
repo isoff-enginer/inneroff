@@ -207,20 +207,20 @@ function InventoryPage() {
   const activeProduct = inventory.find(p => p.id === selectedProductId);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-44 font-sans">
+    <div className="min-h-screen bg-[#0B0E14] text-white pb-44 font-sans">
       <div className="mx-auto max-w-md px-5 pt-3 space-y-4">
         
         {/* HEADER EXCLUSIVO BODEGA */}
         <header className="flex items-center justify-between py-2">
           <button 
             onClick={() => navigate({ to: "/dashboard" })}
-            className="flex size-10 items-center justify-center rounded-full bg-white border border-slate-200/80 shadow-xs text-slate-700 active:scale-95 transition-transform"
+            className="flex size-10 items-center justify-center rounded-full bg-[#161922] border border-white/10 shadow-xs text-white active:scale-95 transition-transform"
           >
             <ChevronLeft className="size-5" />
           </button>
 
           <div className="flex flex-col items-center">
-            <h1 className="text-lg font-black tracking-tight text-slate-950">
+            <h1 className="text-lg font-black tracking-tight text-white">
               Inventario de Bodega
             </h1>
             <span className="text-[11px] font-bold text-slate-400">Stock físico en Bodega Principal</span>
@@ -229,7 +229,7 @@ function InventoryPage() {
           <div className="flex items-center gap-2">
             <Link 
               to="/admin"
-              className="flex size-10 items-center justify-center rounded-full bg-white border border-slate-200/80 shadow-xs text-slate-800 active:scale-95 transition-transform"
+              className="flex size-10 items-center justify-center rounded-full bg-[#161922] border border-white/10 shadow-xs text-white active:scale-95 transition-transform"
               title="Panel Administrativo"
             >
               <FolderTree className="size-4" />
@@ -237,7 +237,7 @@ function InventoryPage() {
 
             <button 
               onClick={() => setIsCreateProdOpen(true)}
-              className="flex size-10 items-center justify-center rounded-full bg-slate-900 border border-slate-800 shadow-xs text-white active:scale-95 transition-transform"
+              className="flex size-10 items-center justify-center rounded-full bg-[#CCFF00] text-black font-black shadow-md active:scale-95 transition-transform"
               title="Crear Producto"
             >
               <Plus className="size-5 stroke-[2.5]" />

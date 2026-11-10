@@ -298,35 +298,35 @@ function DispatchesPage() {
   const totalValueOfItems = selectedItems.reduce((acc, curr) => acc + (curr.pkgCount * curr.packagePrice), 0);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28 font-sans">
+    <div className="min-h-screen bg-[#0B0E14] text-white pb-36 font-sans">
       <div className="mx-auto max-w-md px-5 pt-3 space-y-4">
         
         {/* HEADER */}
         <header className="flex items-center justify-between py-2">
           <button 
             onClick={() => navigate({ to: "/dashboard" })}
-            className="flex size-10 items-center justify-center rounded-full bg-white border border-slate-200/80 shadow-xs text-slate-700 active:scale-95 transition-transform"
+            className="flex size-10 items-center justify-center rounded-full bg-[#161922] border border-white/10 shadow-xs text-white active:scale-95 transition-transform"
           >
             <ChevronLeft className="size-5" />
           </button>
 
-          <h1 className="text-lg font-black tracking-tight text-slate-950">
+          <h1 className="text-lg font-black tracking-tight text-white">
             Despachos & Bodega
           </h1>
 
           <button 
             onClick={() => setIsCreateOpen(true)}
-            className="flex size-10 items-center justify-center rounded-full bg-slate-900 border border-slate-800 shadow-xs text-white active:scale-95 transition-transform"
+            className="flex size-10 items-center justify-center rounded-full bg-[#CCFF00] text-black font-black shadow-md active:scale-95 transition-transform"
             title="Crear Despacho"
           >
-            <Plus className="size-5 stroke-[2.5]" />
+            <Plus className="size-5 stroke-[3]" />
           </button>
         </header>
 
         {/* RESUMEN FINANCIERO DE DESPACHOS Y BODEGA */}
-        <div className="p-4 rounded-3xl bg-white border border-slate-200/80 shadow-xs space-y-3">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-            <span className="text-[11px] font-black uppercase text-slate-500 tracking-wider">Control de Mercancía y Recaudos</span>
+        <div className="p-4.5 rounded-3xl bg-[#161922] border border-white/10 shadow-lg space-y-3">
+          <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+            <span className="text-[11px] font-black uppercase text-slate-300 tracking-wider">Control de Mercancía y Recaudos</span>
             <span className="text-[11px] font-bold text-slate-400">{dispatches.length} envíos</span>
           </div>
 

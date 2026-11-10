@@ -6,16 +6,16 @@ export function BottomNav() {
   return (
     <nav
       aria-label="Navegación inferior"
-      className="fixed bottom-3 inset-x-3 z-30 flex justify-center pb-[env(safe-area-inset-bottom)] pointer-events-none lg:hidden"
+      className="fixed bottom-4 inset-x-4 z-40 flex justify-center pb-[env(safe-area-inset-bottom)] pointer-events-none"
     >
-      <div className="pointer-events-auto bg-white/95 backdrop-blur-md border border-stone-200/70 shadow-lg rounded-full px-2 py-1.5 flex items-center justify-around w-full max-w-sm">
+      <div className="pointer-events-auto bg-[#131620]/95 backdrop-blur-xl border border-white/10 shadow-2xl rounded-full px-3 py-2 flex items-center justify-around w-full max-w-sm">
         {MOBILE_NAV.map((item) => (
           <Link
             key={item.to}
             to={item.to}
-            className="flex flex-col items-center justify-center size-11 rounded-full text-stone-500 transition-all hover:text-stone-900"
+            className="flex flex-col items-center justify-center size-11 rounded-full text-slate-400 transition-all hover:text-white"
             activeProps={{
-              className: "!bg-slate-900 !text-white font-bold shadow-xs scale-105",
+              className: "!bg-[#CCFF00] !text-black font-black shadow-md scale-105",
               "aria-current": "page"
             }}
           >

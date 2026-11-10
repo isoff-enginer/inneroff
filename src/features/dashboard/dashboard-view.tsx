@@ -533,32 +533,36 @@ export function BossDashboard() {
   const blancoOffset = -(adicLength + verdeLength);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-28 font-sans selection:bg-slate-200">
+    <div className="min-h-screen bg-[#0B0E14] text-white pb-36 font-sans selection:bg-[#CCFF00] selection:text-black">
       <div className="mx-auto max-w-md px-5 pt-3 space-y-4">
         
-        {/* TOP BAR MINIMALISTA */}
+        {/* TOP BAR MINIMALISTA (ESTILO IPHONE FINTECH) */}
         <header className="flex items-center justify-between pt-1">
-          <div className="flex items-center gap-2">
-            <span className="flex size-9 items-center justify-center rounded-2xl bg-slate-900 text-white font-black text-sm shadow-xs">
-              R
-            </span>
-            <span className="text-[13px] font-black tracking-tight text-slate-900">
-              Reserva Operaciones
-            </span>
+          <div className="flex items-center gap-2.5">
+            <Link 
+              to="/notifications" 
+              className="relative flex size-11 items-center justify-center rounded-full bg-[#161922] border border-white/10 shadow-sm text-white active:scale-95 transition-transform"
+              title="Notificaciones"
+            >
+              <Bell className="size-4.5" />
+              <span className="absolute top-2.5 right-2.5 size-2 rounded-full bg-[#FF453A] ring-2 ring-[#161922]" />
+            </Link>
+
+            <div>
+              <span className="text-[12px] font-bold text-slate-400 block leading-tight">
+                Hola, {displayName} 👋
+              </span>
+              <span className="text-[15px] font-black tracking-tight text-white">
+                Dashboard Operativo
+              </span>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Link 
-              to="/notifications" 
-              className="relative flex size-9 items-center justify-center rounded-full bg-white border border-slate-200/80 shadow-xs text-slate-700 active:scale-95 transition-transform"
-            >
-              <Bell className="size-4" />
-              <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-slate-900 ring-2 ring-white" />
-            </Link>
-
-            <Link 
               to="/profile" 
-              className="size-9 rounded-full overflow-hidden border-2 border-white shadow-xs bg-slate-100"
+              className="size-11 rounded-full overflow-hidden border border-white/20 shadow-sm bg-slate-800 active:scale-95 transition-transform"
+              title="Perfil"
             >
               <img 
                 src={user?.avatarUrl || "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=120&auto=format&fit=crop&q=80"} 
@@ -569,24 +573,14 @@ export function BossDashboard() {
           </div>
         </header>
 
-        {/* GREETING & TITLE */}
-        <div>
-          <p className="text-[13px] text-slate-400 font-medium">
-            Hola, {displayName} 👋
-          </p>
-          <h1 className="text-[26px] font-black tracking-tight text-slate-950 leading-tight">
-            Dashboard Operativo
-          </h1>
-        </div>
-
         {/* SELECTOR DE PERSPECTIVA (JEFE - BODEGA - FÁBRICA) */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-white border border-slate-200/80 shadow-xs">
+        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-[#131620] border border-white/10 shadow-sm">
           <button
             onClick={() => setPerspective("boss")}
-            className={`flex flex-1 items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-black transition-all ${
+            className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-black transition-all ${
               perspective === "boss" 
-                ? "bg-slate-900 text-white shadow-xs" 
-                : "text-slate-500 hover:text-slate-900"
+                ? "bg-[#CCFF00] text-black shadow-md scale-[1.01]" 
+                : "text-slate-400 hover:text-white"
             }`}
           >
             <Crown className="size-4" />
@@ -595,10 +589,10 @@ export function BossDashboard() {
 
           <button
             onClick={() => setPerspective("warehouse")}
-            className={`flex flex-1 items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-black transition-all ${
+            className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-black transition-all ${
               perspective === "warehouse" 
-                ? "bg-slate-900 text-white shadow-xs" 
-                : "text-slate-500 hover:text-slate-900"
+                ? "bg-[#CCFF00] text-black shadow-md scale-[1.01]" 
+                : "text-slate-400 hover:text-white"
             }`}
           >
             <Archive className="size-4" />
@@ -607,10 +601,10 @@ export function BossDashboard() {
 
           <button
             onClick={() => setPerspective("factory")}
-            className={`flex flex-1 items-center justify-center gap-1.5 py-2 rounded-xl text-[13px] font-black transition-all ${
+            className={`flex flex-1 items-center justify-center gap-1.5 py-2.5 rounded-xl text-[13px] font-black transition-all ${
               perspective === "factory" 
-                ? "bg-slate-900 text-white shadow-xs" 
-                : "text-slate-500 hover:text-slate-900"
+                ? "bg-[#CCFF00] text-black shadow-md scale-[1.01]" 
+                : "text-slate-400 hover:text-white"
             }`}
           >
             <Factory className="size-4" />
@@ -618,15 +612,15 @@ export function BossDashboard() {
           </button>
         </div>
 
-        {/* FILTROS MINIMALISTAS */}
+        {/* FILTROS MINIMALISTAS OBSIDIAN */}
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white border border-slate-200/80 text-[12px] font-bold text-slate-800 shadow-xs">
+          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#161922] border border-white/10 text-[12px] font-bold text-slate-300 shadow-xs">
             <Calendar className="size-3.5 text-slate-400" />
             <span>{timeFilter}</span>
             <ChevronDown className="size-3 text-slate-400" />
           </button>
 
-          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white border border-slate-200/80 text-[12px] font-bold text-slate-800 shadow-xs">
+          <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#161922] border border-white/10 text-[12px] font-bold text-slate-300 shadow-xs">
             <Building2 className="size-3.5 text-slate-400" />
             <span>{perspective === "factory" ? "Fábrica Principal" : perspective === "warehouse" ? "Bodega Principal" : storageFilter}</span>
             <ChevronDown className="size-3 text-slate-400" />
@@ -634,430 +628,271 @@ export function BossDashboard() {
         </div>
 
         {/* ======================================================== */}
-        {/* VISTA 1: JEFE PRINCIPAL (MINIMALISTA - ESTILO IMAGEN 2)  */}
+        {/* VISTA 1: JEFE PRINCIPAL (ESTILO EXACTO BENTO NEON / OBSIDIAN) */}
         {/* ======================================================== */}
         {perspective === "boss" && (
-          <div className="space-y-4">
-            {/* TARJETA BLANCA MINIMALISTA TIPO PORTAFOLIO FINTECH */}
-            <div className="rounded-[28px] bg-white p-5 border border-slate-200/80 shadow-xs transition-all">
-              
-              {/* Header de la Tarjeta */}
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
-                  Saldo total (liquidación)
-                </span>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => setShowAmountEye(prev => !prev)}
-                    className="size-7 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors"
-                    title={showAmountEye ? "Ocultar monto" : "Mostrar monto"}
-                  >
-                    {showAmountEye ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-                  </button>
-                  <Link 
-                    to="/sales" 
-                    className="size-7 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors"
-                  >
-                    <SlidersHorizontal className="size-3.5" />
-                  </Link>
+          <div className="space-y-3.5">
+            
+            {/* HERO CARD (NEON LIME / ACID GREEN - IDÉNTICO A LA FOTO) */}
+            <div className="rounded-[34px] bg-[#CCFF00] text-black p-6 shadow-2xl relative overflow-hidden transition-all">
+              {/* Top Row: Icon badge + Account / Card number */}
+              <div className="flex items-center justify-between">
+                <div className="size-9 rounded-full bg-black/10 flex items-center justify-center text-black shadow-xs">
+                  <Crown className="size-5 stroke-[2.5]" />
                 </div>
+                <span className="font-mono text-[12px] font-black tracking-wider text-black/75">
+                  LIQUIDACIÓN HOY
+                </span>
               </div>
 
-              {/* Saldo Principal en Grande */}
-              <div className="flex items-baseline gap-2 mb-4">
-                <span className="text-[32px] font-black tracking-tight text-slate-950">
+              {/* Center: Massive Grotesque Bold Amount */}
+              <div className="my-4 flex items-center justify-between">
+                <span className="text-[38px] sm:text-[44px] font-black tracking-tight leading-none text-black">
                   {showAmountEye ? formatCurrency(salesBreakdown.totalVentas) : "••••••••"}
                 </span>
-                <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">
+
+                <button 
+                  onClick={() => setShowAmountEye(prev => !prev)}
+                  className="size-8 rounded-full bg-black/10 flex items-center justify-center text-black hover:bg-black/20 active:scale-95 transition-all"
+                  title={showAmountEye ? "Ocultar monto" : "Mostrar monto"}
+                >
+                  {showAmountEye ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+                </button>
+              </div>
+
+              {/* Bottom Row: Name + Date */}
+              <div className="flex items-center justify-between pt-1 border-t border-black/10">
+                <span className="text-[13px] font-black tracking-tight text-black">
+                  {displayName} • Director Operaciones
+                </span>
+                <span className="text-[12px] font-bold text-black/70">
                   Hoy
                 </span>
               </div>
+            </div>
 
-              {/* Gráfico Donut Ring y Leyenda de 3 Grupos (Idéntico estilo a la foto 2) */}
-              <div className="flex items-center justify-between py-2">
-                {/* Donut SVG Minimalista */}
-                <div className="relative size-24 shrink-0 flex items-center justify-center">
-                  <svg viewBox="0 0 100 100" className="size-full -rotate-90">
-                    {/* Track de fondo */}
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r={cRadius}
-                      stroke="#F1F5F9"
-                      strokeWidth="9"
-                      fill="transparent"
-                    />
-                    {totalLiq > 0 ? (
-                      <>
-                        {/* 1. Productos adicionales (Coral / Salmón #FB7185) */}
-                        {adicLength > 0 && (
-                          <circle
-                            cx="50"
-                            cy="50"
-                            r={cRadius}
-                            stroke="#FB7185"
-                            strokeWidth="9"
-                            strokeDasharray={`${adicLength} ${cCircumference}`}
-                            strokeDashoffset={adicOffset}
-                            fill="transparent"
-                            strokeLinecap="round"
-                          />
-                        )}
-                        {/* 2. Verde (Menta / Esmeralda #10B981) */}
-                        {verdeLength > 0 && (
-                          <circle
-                            cx="50"
-                            cy="50"
-                            r={cRadius}
-                            stroke="#10B981"
-                            strokeWidth="9"
-                            strokeDasharray={`${verdeLength} ${cCircumference}`}
-                            strokeDashoffset={verdeOffset}
-                            fill="transparent"
-                            strokeLinecap="round"
-                          />
-                        )}
-                        {/* 3. Blanco (Gris Slate #64748B) */}
-                        {blancoLength > 0 && (
-                          <circle
-                            cx="50"
-                            cy="50"
-                            r={cRadius}
-                            stroke="#64748B"
-                            strokeWidth="9"
-                            strokeDasharray={`${blancoLength} ${cCircumference}`}
-                            strokeDashoffset={blancoOffset}
-                            fill="transparent"
-                            strokeLinecap="round"
-                          />
-                        )}
-                      </>
-                    ) : (
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r={cRadius}
-                        stroke="#CBD5E1"
-                        strokeWidth="9"
-                        strokeDasharray={`40 ${cCircumference}`}
-                        fill="transparent"
-                      />
-                    )}
-                  </svg>
-                </div>
-
-                {/* Leyenda a la derecha con los 3 grupos y montos + porcentajes exactos */}
-                <div className="flex-1 pl-4 space-y-2 text-[12px]">
-                  {/* Blanco */}
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 font-bold text-slate-700">
-                      <span className="size-2 rounded-full bg-[#64748B]" />
-                      Blanco
-                    </span>
-                    <div className="flex items-center gap-1.5 text-right">
-                      <span className="font-black text-slate-900">
-                        {formatCurrency(salesBreakdown.blanco)}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {salesBreakdown.pctBlanco > 0 ? `(${salesBreakdown.pctBlanco.toFixed(1)}%)` : "(0%)"}
-                      </span>
-                    </div>
+            {/* BENTO GRID: LOS 3 GRUPOS PRINCIPALES CON MONTOS RESUMIDOS */}
+            <div className="grid grid-cols-2 gap-3">
+              
+              {/* CARD BENTO 1: BLANCO (DARK SLATE #161922) */}
+              <div className="rounded-[28px] bg-[#161922] border border-white/10 p-4.5 text-white flex flex-col justify-between min-h-[148px] shadow-lg hover:border-white/20 transition-all">
+                <div className="flex items-center justify-between">
+                  <div className="size-8 rounded-full bg-white/10 flex items-center justify-center text-slate-300">
+                    <Layers className="size-4" />
                   </div>
-
-                  {/* Verde */}
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 font-bold text-slate-700">
-                      <span className="size-2 rounded-full bg-[#10B981]" />
-                      Verde
-                    </span>
-                    <div className="flex items-center gap-1.5 text-right">
-                      <span className="font-black text-emerald-600">
-                        {formatCurrency(salesBreakdown.verde)}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {salesBreakdown.pctVerde > 0 ? `(${salesBreakdown.pctVerde.toFixed(1)}%)` : "(0%)"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Productos adicionales */}
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 font-bold text-slate-700">
-                      <span className="size-2 rounded-full bg-[#FB7185]" />
-                      Adicionales
-                    </span>
-                    <div className="flex items-center gap-1.5 text-right">
-                      <span className="font-black text-rose-500">
-                        {formatCurrency(salesBreakdown.adicionales)}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-400">
-                        {salesBreakdown.pctAdicionales > 0 ? `(${salesBreakdown.pctAdicionales.toFixed(1)}%)` : "(0%)"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Botón para Desplegar el Desglose Individual de Productos Adicionales */}
-              <div className="pt-2">
-                <button
-                  onClick={() => setIsAdicionalesExpanded(prev => !prev)}
-                  className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-slate-50 border border-slate-100 text-[11px] font-bold text-slate-600 hover:bg-slate-100 transition-colors"
-                >
-                  <span className="flex items-center gap-1.5">
-                    <span className="size-2 rounded-full bg-[#FB7185]" />
-                    Desglose Adicionales: Rojas, Flores, Baldes, Pre-roll
+                  <span className="text-[10px] font-black text-slate-300 bg-white/10 px-2 py-0.5 rounded-full">
+                    {consolidation.completedByGroup.blanco === salesBreakdown.blanco && salesBreakdown.blanco > 0 
+                      ? "✓ 100%" 
+                      : `${salesBreakdown.pctBlanco > 0 ? salesBreakdown.pctBlanco.toFixed(0) : "0"}%`}
                   </span>
-                  <ChevronDown className={`size-3.5 transition-transform ${isAdicionalesExpanded ? "rotate-180" : ""}`} />
-                </button>
-
-                {isAdicionalesExpanded && (
-                  <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-slate-100 text-[11px]">
-                    <div className="flex justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="text-slate-600 font-bold">• Rojas</span>
-                      <span className="font-black text-slate-900">{formatCurrency(salesBreakdown.adicionalesBreakdown.rojas)}</span>
-                    </div>
-                    <div className="flex justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="text-slate-600 font-bold">• Flores</span>
-                      <span className="font-black text-slate-900">{formatCurrency(salesBreakdown.adicionalesBreakdown.flores)}</span>
-                    </div>
-                    <div className="flex justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="text-slate-600 font-bold">• Baldes</span>
-                      <span className="font-black text-slate-900">{formatCurrency(salesBreakdown.adicionalesBreakdown.baldes)}</span>
-                    </div>
-                    <div className="flex justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                      <span className="text-slate-600 font-bold">• Pre-roll</span>
-                      <span className="font-black text-slate-900">{formatCurrency(salesBreakdown.adicionalesBreakdown.preroll)}</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Fila Inferior con Línea Divisoria (Disponible vs Por Justificar) */}
-              <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-[12px]">
-                <div className="flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-emerald-500" />
-                  <span className="text-slate-500 font-bold">Disponible:</span>
-                  <span className="font-black text-slate-900">{formatCurrency(salesBreakdown.recaudado)}</span>
                 </div>
 
-                <div className="flex items-center gap-1 text-slate-500">
-                  <span className="font-bold">Por justificar:</span>
-                  <span className="font-black text-rose-500">{formatCurrency(salesBreakdown.faltante)}</span>
-                  <ChevronRight className="size-3.5 text-slate-400" />
+                <div>
+                  <span className="text-[14px] font-black uppercase tracking-wider text-slate-200 block">
+                    Blanco
+                  </span>
+                  <span className="text-[11px] text-slate-400 font-medium truncate block">
+                    Mamitas • Tornillo
+                  </span>
+                  <span className="text-[19px] font-black text-white block mt-1">
+                    {formatCurrency(salesBreakdown.blanco)}
+                  </span>
+                </div>
+              </div>
+
+              {/* CARD BENTO 2: VERDE (ELECTRIC ROYAL COBALT BLUE #2A48EE) */}
+              <div className="rounded-[28px] bg-[#2A48EE] text-white p-4.5 flex flex-col justify-between min-h-[148px] shadow-xl hover:brightness-105 transition-all">
+                <div className="flex items-center justify-between">
+                  <div className="size-8 rounded-full bg-white/20 flex items-center justify-center text-white">
+                    <Sparkles className="size-4" />
+                  </div>
+                  <span className="text-[10px] font-black text-blue-100 bg-white/20 px-2 py-0.5 rounded-full">
+                    {consolidation.completedByGroup.verde === salesBreakdown.verde && salesBreakdown.verde > 0 
+                      ? "✓ 100%" 
+                      : `${salesBreakdown.pctVerde > 0 ? salesBreakdown.pctVerde.toFixed(0) : "0"}%`}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[14px] font-black uppercase tracking-wider text-blue-100 block">
+                    Verde
+                  </span>
+                  <span className="text-[11px] text-blue-200 font-medium truncate block">
+                    Lisos • Largos • Minis
+                  </span>
+                  <span className="text-[19px] font-black text-white block mt-1">
+                    {formatCurrency(salesBreakdown.verde)}
+                  </span>
                 </div>
               </div>
 
             </div>
 
-            {/* CARD: CONSOLIDACIÓN DE VENTAS COMPLETADAS (100% LIQUIDADAS) */}
-            <div className="rounded-[28px] bg-slate-900 text-white p-5 shadow-xs space-y-3.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="flex size-6 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
-                    <Check className="size-3.5 stroke-[3]" />
+            {/* CARD BENTO 3: PRODUCTOS ADICIONALES (PURE WHITE CON EL STACK DE FOTOS) */}
+            <div className="rounded-[32px] bg-white text-slate-950 p-5 shadow-2xl relative overflow-hidden transition-all">
+              {/* Top Row: Icon pill + Overlapping circular photos (Idéntico a la foto) */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="size-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-900 shadow-xs">
+                  <Package className="size-4.5" />
+                </div>
+
+                {/* STACK DE LAS 4 FOTOS DE PRODUCTOS ADICIONALES */}
+                <div className="flex items-center -space-x-2.5">
+                  <img 
+                    src="/fotos de productos/rojas.png" 
+                    alt="Rojas" 
+                    className="size-8 rounded-full border-2 border-white object-cover bg-slate-100 shadow-xs"
+                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                  />
+                  <img 
+                    src="/fotos de productos/flores.png" 
+                    alt="Flores" 
+                    className="size-8 rounded-full border-2 border-white object-cover bg-slate-100 shadow-xs"
+                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                  />
+                  <img 
+                    src="/fotos de productos/baldes.png" 
+                    alt="Baldes" 
+                    className="size-8 rounded-full border-2 border-white object-cover bg-slate-100 shadow-xs"
+                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                  />
+                  <img 
+                    src="/fotos de productos/pre rolls.png" 
+                    alt="Pre-roll" 
+                    className="size-8 rounded-full border-2 border-white object-cover bg-slate-100 shadow-xs"
+                    onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                  />
+                </div>
+              </div>
+
+              {/* Title, Subtitle and Total Amount */}
+              <div className="mb-3">
+                <div className="flex items-baseline justify-between">
+                  <span className="text-[16px] font-black text-slate-950 tracking-tight">
+                    Productos Adicionales
                   </span>
-                  <span className="text-[12px] font-extrabold uppercase tracking-wider text-slate-300">
-                    Ventas Completadas (Consolidadas)
+                  <span className="text-[11px] font-black text-rose-600 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full">
+                    $8.000 c/u
                   </span>
                 </div>
-                <span className="text-[11px] font-black text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                <span className="text-[11px] text-slate-500 font-semibold block">
+                  Baldes • Rojas • Flores • Pre-roll
+                </span>
+                <span className="text-[24px] font-black text-slate-950 block mt-0.5">
+                  {formatCurrency(salesBreakdown.adicionales)}
+                </span>
+              </div>
+
+              {/* Desglose individual de los 4 adicionales en pastillas limpias */}
+              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 text-[11px]">
+                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="font-bold text-slate-600">• Rojas</span>
+                  <span className="font-black text-slate-900">{formatCurrency(salesBreakdown.adicionalesBreakdown.rojas)}</span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="font-bold text-slate-600">• Flores</span>
+                  <span className="font-black text-slate-900">{formatCurrency(salesBreakdown.adicionalesBreakdown.flores)}</span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="font-bold text-slate-600">• Baldes</span>
+                  <span className="font-black text-slate-900">{formatCurrency(salesBreakdown.adicionalesBreakdown.baldes)}</span>
+                </div>
+                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                  <span className="font-bold text-slate-600">• Pre-roll</span>
+                  <span className="font-black text-slate-900">{formatCurrency(salesBreakdown.adicionalesBreakdown.preroll)}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* CARD 4: RESUMEN DE DINERO & CAJA (DISPONIBLE VS POR JUSTIFICAR) */}
+            <div className="rounded-[30px] bg-[#161922] border border-white/10 p-5 text-white shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-400">
+                  Resumen de Caja & Recaudos
+                </span>
+                <span className="text-[10px] font-black text-[#CCFF00] bg-[#CCFF00]/10 border border-[#CCFF00]/20 px-2.5 py-0.5 rounded-full">
                   {consolidation.completedProducts.length} de 9 Liquidados
                 </span>
               </div>
 
-              <div>
-                <span className="text-3xl font-black text-white tracking-tight">
-                  {formatCurrency(consolidation.totalVentasCompletadas)}
-                </span>
-                <p className="text-[11px] text-slate-400 mt-0.5">
-                  Monto total de ventas liquidadas al 100% (sin deuda en tienda)
-                </p>
-              </div>
-
-              {/* Desglose de Ventas Consolidadas por los 3 Grupos con Montos Totales y Consolidados al 100% */}
-              <div className="grid grid-cols-3 gap-2 pt-1 border-t border-white/10 text-center">
-                <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-between">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Blanco</span>
-                  <div className="my-1">
-                    <span className="text-[14px] font-black text-white block">
-                      {formatCurrency(consolidation.completedByGroup.blanco)}
-                    </span>
-                    <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full inline-block mt-0.5">
-                      100% Consolidado
-                    </span>
-                  </div>
-                  <span className="text-[9px] text-slate-400">
-                    Total: {formatCurrency(consolidation.totalByGroup.blanco || salesBreakdown.blanco)}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
+                  <span className="text-[11px] font-bold text-slate-300 block uppercase">Disponible en Caja</span>
+                  <span className="text-[24px] font-black text-[#CCFF00] block mt-0.5">
+                    {formatCurrency(salesBreakdown.recaudado)}
                   </span>
+                  <span className="text-[10px] text-slate-400 font-medium">Cobrado y confirmado</span>
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-between">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Verde</span>
-                  <div className="my-1">
-                    <span className="text-[14px] font-black text-emerald-400 block">
-                      {formatCurrency(consolidation.completedByGroup.verde)}
-                    </span>
-                    <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full inline-block mt-0.5">
-                      100% Consolidado
-                    </span>
-                  </div>
-                  <span className="text-[9px] text-slate-400">
-                    Total: {formatCurrency(consolidation.totalByGroup.verde || salesBreakdown.verde)}
+                <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
+                  <span className="text-[11px] font-bold text-slate-300 block uppercase">Por Justificar</span>
+                  <span className="text-[24px] font-black text-rose-400 block mt-0.5">
+                    {formatCurrency(salesBreakdown.faltante)}
                   </span>
-                </div>
-
-                <div className="p-2.5 rounded-xl bg-white/5 border border-white/10 flex flex-col justify-between">
-                  <span className="text-[10px] font-bold text-slate-400 block uppercase tracking-wider">Adicionales</span>
-                  <div className="my-1">
-                    <span className="text-[14px] font-black text-rose-400 block">
-                      {formatCurrency(consolidation.completedByGroup.adicionales)}
-                    </span>
-                    <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full inline-block mt-0.5">
-                      100% Consolidado
-                    </span>
-                  </div>
-                  <span className="text-[9px] text-slate-400">
-                    Total: {formatCurrency(consolidation.totalByGroup.adicionales || salesBreakdown.adicionales)}
-                  </span>
+                  <span className="text-[10px] text-slate-400 font-medium">Pendiente en tienda</span>
                 </div>
               </div>
 
-              {/* Desglose individual de productos adicionales con montos exactos */}
-              <div className="space-y-1.5 pt-1">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  Desglose Productos Adicionales (Montos Consolidados al 100%):
-                </span>
-                <div className="grid grid-cols-2 gap-1.5 text-[11px]">
-                  <div className="flex justify-between items-center px-2.5 py-1.5 rounded-lg bg-white/5 text-slate-300">
-                    <span className="font-bold">• Rojas</span>
-                    <div className="text-right">
-                      <span className="font-black text-white block">{formatCurrency(consolidation.completedByGroup.adicionalesBreakdown.rojas)}</span>
-                      {consolidation.totalByGroup.adicionalesBreakdown.rojas > consolidation.completedByGroup.adicionalesBreakdown.rojas && (
-                        <span className="text-[9px] text-slate-400">de {formatCurrency(consolidation.totalByGroup.adicionalesBreakdown.rojas)}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center px-2.5 py-1.5 rounded-lg bg-white/5 text-slate-300">
-                    <span className="font-bold">• Flores</span>
-                    <div className="text-right">
-                      <span className="font-black text-white block">{formatCurrency(consolidation.completedByGroup.adicionalesBreakdown.flores)}</span>
-                      {consolidation.totalByGroup.adicionalesBreakdown.flores > consolidation.completedByGroup.adicionalesBreakdown.flores && (
-                        <span className="text-[9px] text-slate-400">de {formatCurrency(consolidation.totalByGroup.adicionalesBreakdown.flores)}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center px-2.5 py-1.5 rounded-lg bg-white/5 text-slate-300">
-                    <span className="font-bold">• Baldes</span>
-                    <div className="text-right">
-                      <span className="font-black text-white block">{formatCurrency(consolidation.completedByGroup.adicionalesBreakdown.baldes)}</span>
-                      {consolidation.totalByGroup.adicionalesBreakdown.baldes > consolidation.completedByGroup.adicionalesBreakdown.baldes && (
-                        <span className="text-[9px] text-slate-400">de {formatCurrency(consolidation.totalByGroup.adicionalesBreakdown.baldes)}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center px-2.5 py-1.5 rounded-lg bg-white/5 text-slate-300">
-                    <span className="font-bold">• Pre-roll</span>
-                    <div className="text-right">
-                      <span className="font-black text-white block">{formatCurrency(consolidation.completedByGroup.adicionalesBreakdown.preroll)}</span>
-                      {consolidation.totalByGroup.adicionalesBreakdown.preroll > consolidation.completedByGroup.adicionalesBreakdown.preroll && (
-                        <span className="text-[9px] text-slate-400">de {formatCurrency(consolidation.totalByGroup.adicionalesBreakdown.preroll)}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+              {/* BOTONES DE ACCIÓN RÁPIDA (RECAUDAR Y DESPACHAR) */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <Button 
+                  onClick={() => setIsRecaudoModalOpen(true)}
+                  className="h-12 rounded-2xl bg-[#CCFF00] text-black font-black text-[13px] hover:bg-[#b8e600] shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                >
+                  <CircleDollarSign className="size-4.5" /> Recaudar Dinero
+                </Button>
 
-              {/* Estado de Desbloqueo de Fábrica por Producto */}
-              <div className="pt-2 border-t border-white/10">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">
-                  Estado para Despacho Fábrica ➔ Bodega:
-                </span>
-                <div className="flex flex-wrap gap-1.5">
-                  {CANONICAL_9_NAMES.map((name) => {
-                    const status = liquidationMap[name];
-                    const isCompleted = status?.isFullyPaid && status.totalDispatchedVal > 0;
-                    const isBlocked = status?.isBlocked;
-                    return (
-                      <span
-                        key={name}
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                          isBlocked
-                            ? "bg-rose-500/10 text-rose-300 border-rose-500/30"
-                            : isCompleted
-                            ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
-                            : "bg-slate-800 text-slate-300 border-slate-700"
-                        }`}
-                      >
-                        {isBlocked ? `🔒 ${name}` : `✓ ${name}`}
-                      </span>
-                    );
-                  })}
-                </div>
+                <Button 
+                  onClick={() => {
+                    setDispatchFromType("warehouse");
+                    setDispatchToType("store");
+                    setIsQuickDispatchOpen(true);
+                  }}
+                  className="h-12 rounded-2xl bg-white/10 text-white border border-white/10 font-black text-[13px] hover:bg-white/15 shadow-md flex items-center justify-center gap-1.5 active:scale-95 transition-transform"
+                >
+                  <Send className="size-4 text-white" /> Despachar Tienda
+                </Button>
               </div>
             </div>
 
-            {/* BOTONES DE ACCIÓN RÁPIDA (RECAUDAR Y DESPACHAR) */}
-            <div className="grid grid-cols-2 gap-2.5">
-              <Button 
-                onClick={() => setIsRecaudoModalOpen(true)}
-                className="h-12 rounded-2xl bg-slate-900 text-white font-black text-[13px] hover:bg-slate-800 shadow-xs"
-              >
-                <CircleDollarSign className="size-4 mr-1.5" /> Recaudar Dinero
-              </Button>
-
-              <Button 
-                onClick={() => {
-                  setDispatchFromType("warehouse");
-                  setDispatchToType("store");
-                  setIsQuickDispatchOpen(true);
-                }}
-                className="h-12 rounded-2xl bg-white text-slate-900 border border-slate-200/80 font-black text-[13px] hover:bg-slate-50 shadow-xs"
-              >
-                <Send className="size-4 mr-1.5 text-slate-700" /> Despachar a Tienda
-              </Button>
-            </div>
-
-            {/* CARD 2: ESTADO LOGÍSTICO Y DESPACHOS */}
-            <div className="rounded-[28px] bg-white p-5 border border-slate-200/80 shadow-xs">
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-[14px] font-black tracking-tight text-slate-900">Despachos & Logística</h2>
-                <Link to="/dispatches" className="size-7 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-colors">
-                  <SlidersHorizontal className="size-3.5 text-slate-600" />
-                </Link>
+            {/* CARD 5: CONTROL DE DESPACHO FÁBRICA ➔ BODEGA (ESTADO DE BLOQUEO) */}
+            <div className="rounded-[28px] bg-[#161922] border border-white/10 p-4.5 text-white shadow-md space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-300">
+                  Control Despacho Fábrica ➔ Bodega
+                </span>
+                <span className="text-[9px] font-bold text-amber-400 bg-amber-400/10 border border-amber-400/20 px-2 py-0.5 rounded-full">
+                  Bloqueo si hay Deuda
+                </span>
               </div>
-
-              <div className="grid grid-cols-4 gap-2">
-                <div className="flex flex-col p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                  <span className="text-xl font-black text-slate-900">{dispatchMetrics.overdue}</span>
-                  <span className="text-[9px] font-bold text-slate-500 mt-0.5">Pendiente</span>
-                </div>
-
-                <div className="flex flex-col p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                  <span className="text-xl font-black text-slate-900">{dispatchMetrics.returns}</span>
-                  <span className="text-[9px] font-bold text-slate-500 mt-0.5">Devueltos</span>
-                </div>
-
-                <div className="flex flex-col p-2.5 rounded-2xl bg-slate-50 border border-slate-100 text-center">
-                  <span className="text-xl font-black text-slate-900">{dispatchMetrics.inProgress}</span>
-                  <span className="text-[9px] font-bold text-slate-500 mt-0.5">En curso</span>
-                </div>
-
-                <div className="flex flex-col p-2.5 rounded-2xl bg-emerald-50 border border-emerald-100 text-center">
-                  <span className="text-xl font-black text-emerald-900">{dispatchMetrics.completed}</span>
-                  <span className="text-[9px] font-bold text-emerald-700 mt-0.5">Recibidos</span>
-                </div>
+              <div className="flex flex-wrap gap-1.5">
+                {CANONICAL_9_NAMES.map((name) => {
+                  const status = liquidationMap[name];
+                  const isBlocked = !!status?.isBlocked;
+                  return (
+                    <span
+                      key={name}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all ${
+                        isBlocked
+                          ? "bg-rose-500/10 text-rose-300 border-rose-500/30"
+                          : "bg-[#CCFF00]/15 text-[#CCFF00] border border-[#CCFF00]/30"
+                      }`}
+                    >
+                      {isBlocked ? `🔒 ${name}` : `✓ ${name}`}
+                    </span>
+                  );
+                })}
               </div>
             </div>
 
-            {/* CARD 3 (JEFE): DESPACHOS EN CURSO INTERACTIVOS */}
-            <div className="rounded-[28px] bg-white p-5 border border-slate-200/80 shadow-xs">
-              <div className="flex items-center justify-between mb-3">
+            {/* CARD 6: DESPACHOS EN CURSO INTERACTIVOS */}
+            <div className="rounded-[28px] bg-[#161922] border border-white/10 p-5 text-white shadow-md space-y-3">
+              <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-[14px] font-black text-slate-900">Despachos en Curso</h3>
-                  <p className="text-[11px] text-slate-500 font-medium">Toca cualquier despacho para ver fotos y detalle</p>
+                  <h3 className="text-[14px] font-black text-white">Despachos en Curso</h3>
+                  <p className="text-[11px] text-slate-400 font-medium">Toca para ver fotos de productos y detalle</p>
                 </div>
-                <Link to="/dispatches" className="text-[11px] font-bold text-slate-900 underline">
+                <Link to="/dispatches" className="text-[11px] font-bold text-[#CCFF00] underline">
                   Ver todos
                 </Link>
               </div>
@@ -1070,20 +905,22 @@ export function BossDashboard() {
                     <div 
                       key={d.id} 
                       onClick={() => handleOpenDispatchDetail(d)}
-                      className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer"
+                      className="p-3.5 rounded-2xl bg-[#1D212C] border border-white/5 hover:border-white/20 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer"
                     >
                       <div className="flex flex-col">
-                        <span className="text-[14px] font-black text-slate-900">
+                        <span className="text-[14px] font-black text-white">
                           {d.toLocationName} · #{d.dispatchNumber}
                         </span>
-                        <span className="text-[12px] text-slate-500 font-medium mt-0.5">
+                        <span className="text-[12px] text-slate-400 font-medium mt-0.5">
                           {d.items?.length || 0} productos • {formatCurrency(d.totalValue || 0)}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-2">
                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                          d.status === "received" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"
+                          d.status === "received" 
+                            ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                            : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                         }`}>
                           {d.status === "received" ? "Recibido" : "Enviado"}
                         </span>
@@ -1094,32 +931,33 @@ export function BossDashboard() {
                 )}
               </div>
             </div>
+
           </div>
         )}
 
         {/* ======================================================== */}
-        {/* VISTA 2: BODEGA                                          */}
+        {/* VISTA 2: BODEGA (OBSIDIAN & NEON MINIMALISTA)            */}
         {/* ======================================================== */}
         {perspective === "warehouse" && (
-          <div className="space-y-4">
-            <div className="rounded-[28px] bg-white p-5 border border-slate-200/80 shadow-xs">
+          <div className="space-y-3.5">
+            <div className="rounded-[28px] bg-[#161922] border border-white/10 p-5 text-white shadow-md">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-extrabold uppercase text-slate-400 flex items-center gap-1.5">
-                  <Archive className="size-4" /> Bodega Principal · Operaciones
+                  <Archive className="size-4 text-[#CCFF00]" /> Bodega Principal · Operaciones
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-3 my-3">
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
                   <span className="text-[10px] font-bold text-slate-400 uppercase">Recaudado Tiendas</span>
-                  <p className="text-lg font-black text-emerald-600 mt-0.5">
+                  <p className="text-xl font-black text-[#CCFF00] mt-0.5">
                     {formatCurrency(salesBreakdown.recaudado)}
                   </p>
                 </div>
 
-                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10">
                   <span className="text-[10px] font-bold text-rose-400 uppercase">Faltante por Cobrar</span>
-                  <p className="text-lg font-black text-rose-600 mt-0.5">
+                  <p className="text-xl font-black text-rose-400 mt-0.5">
                     {formatCurrency(salesBreakdown.faltante)}
                   </p>
                 </div>
@@ -1132,22 +970,22 @@ export function BossDashboard() {
                     setDispatchToType("store");
                     setIsQuickDispatchOpen(true);
                   }}
-                  className="flex-1 h-12 rounded-2xl bg-slate-900 text-white font-black text-[13px] hover:bg-slate-800 shadow-xs"
+                  className="flex-1 h-12 rounded-2xl bg-[#CCFF00] text-black font-black text-[13px] hover:bg-[#b8e600] shadow-xs active:scale-95 transition-transform"
                 >
-                  <Send className="size-4 mr-1.5" /> Despachar a Tienda
+                  <Send className="size-4 mr-1.5 text-black" /> Despachar a Tienda
                 </Button>
 
                 <Button 
                   onClick={() => setIsRecaudoModalOpen(true)}
-                  className="h-12 px-4 rounded-2xl bg-white border border-slate-200 text-slate-800 font-black text-[13px] hover:bg-slate-50 shadow-xs"
+                  className="h-12 px-4 rounded-2xl bg-white/10 border border-white/10 text-white font-black text-[13px] hover:bg-white/15 shadow-xs active:scale-95 transition-transform"
                 >
                   <CircleDollarSign className="size-4 mr-1" /> Recaudar
                 </Button>
               </div>
             </div>
 
-            <div className="rounded-[28px] bg-white p-5 border border-slate-200/80 shadow-xs">
-              <h3 className="text-[14px] font-black text-slate-900 mb-3 flex items-center justify-between">
+            <div className="rounded-[28px] bg-[#161922] border border-white/10 p-5 text-white shadow-md">
+              <h3 className="text-[14px] font-black text-white mb-3 flex items-center justify-between">
                 <span>Despachos en Curso</span>
                 <span className="text-[11px] font-bold text-slate-400">{relevantDispatches.length} envíos</span>
               </h3>
@@ -1157,20 +995,22 @@ export function BossDashboard() {
                   <div 
                     key={d.id} 
                     onClick={() => handleOpenDispatchDetail(d)}
-                    className="p-3.5 rounded-2xl bg-slate-50 border border-slate-100 hover:bg-slate-100 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer"
+                    className="p-3.5 rounded-2xl bg-[#1D212C] border border-white/5 hover:border-white/20 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer"
                   >
                     <div className="flex flex-col">
-                      <span className="text-[14px] font-black text-slate-900">
+                      <span className="text-[14px] font-black text-white">
                         {d.toLocationName} · #{d.dispatchNumber}
                       </span>
-                      <span className="text-[12px] text-slate-500 font-medium mt-0.5">
+                      <span className="text-[12px] text-slate-400 font-medium mt-0.5">
                         {d.items?.length || 0} productos • {formatCurrency(d.totalValue || 0)}
                       </span>
                     </div>
 
                     <div className="flex items-center gap-2">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                        d.status === "received" ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-900"
+                        d.status === "received" 
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
+                          : "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                       }`}>
                         {d.status === "received" ? "Recibido" : "Enviado"}
                       </span>
@@ -1184,18 +1024,18 @@ export function BossDashboard() {
         )}
 
         {/* ======================================================== */}
-        {/* VISTA 3: FÁBRICA                                         */}
+        {/* VISTA 3: FÁBRICA (OBSIDIAN & NEON MINIMALISTA)           */}
         {/* ======================================================== */}
         {perspective === "factory" && (
-          <div className="space-y-4">
-            <div className="rounded-[28px] bg-white p-5 border border-slate-200/80 shadow-xs">
+          <div className="space-y-3.5">
+            <div className="rounded-[28px] bg-[#161922] border border-white/10 p-5 text-white shadow-md">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-extrabold uppercase text-slate-400 flex items-center gap-1.5">
-                  <Factory className="size-4" /> Fábrica · Despacho de Producción
+                  <Factory className="size-4 text-[#CCFF00]" /> Fábrica · Despacho de Producción
                 </span>
               </div>
 
-              <p className="text-[13px] text-slate-500 font-medium my-2">
+              <p className="text-[13px] text-slate-300 font-medium my-2">
                 Despacha productos terminados en sus presentaciones (Bombas, Balones o Paquetes) hacia la Bodega Principal.
               </p>
 
@@ -1206,28 +1046,28 @@ export function BossDashboard() {
                     setDispatchToType("warehouse");
                     setIsQuickDispatchOpen(true);
                   }}
-                  className="w-full h-12 rounded-2xl bg-slate-900 text-white font-black text-[14px] hover:bg-slate-800 shadow-xs"
+                  className="w-full h-12 rounded-2xl bg-[#CCFF00] text-black font-black text-[14px] hover:bg-[#b8e600] shadow-md active:scale-95 transition-transform"
                 >
-                  <Send className="size-4 mr-2" /> Despachar Presentaciones a Bodega
+                  <Send className="size-4 mr-2 text-black" /> Despachar Presentaciones a Bodega
                 </Button>
               </div>
             </div>
 
             {/* Banner de Control de Liquidación y Bloqueo */}
-            <div className="rounded-[28px] bg-slate-900 text-white p-4 shadow-xs space-y-1">
+            <div className="rounded-[28px] bg-[#161922] border border-white/10 text-white p-4.5 shadow-md space-y-1.5">
               <div className="flex items-center gap-2">
                 <span className="size-2 rounded-full bg-amber-400 animate-pulse" />
                 <span className="text-[12px] font-black uppercase tracking-wider text-slate-200">
                   Control de Liquidación y Bloqueo
                 </span>
               </div>
-              <p className="text-[12px] text-slate-300">
+              <p className="text-[12px] text-slate-400">
                 Fábrica solo puede despachar productos que estén 100% liquidados en tienda. Si un producto tiene saldo pendiente, queda bloqueado 🔒 automáticamente hasta que Bodega registre el recaudo total.
               </p>
             </div>
 
-            <div className="rounded-[28px] bg-white p-5 border border-slate-200/80 shadow-xs">
-              <h3 className="text-[14px] font-black text-slate-900 mb-3 flex items-center justify-between">
+            <div className="rounded-[28px] bg-[#161922] border border-white/10 p-5 text-white shadow-md">
+              <h3 className="text-[14px] font-black text-white mb-3 flex items-center justify-between">
                 <span>Presentaciones Disponibles</span>
                 <span className="text-[11px] font-bold text-slate-400">{allProducts.length} productos</span>
               </h3>
@@ -1244,29 +1084,29 @@ export function BossDashboard() {
                       key={p.id} 
                       className={`p-3 rounded-2xl border flex flex-col justify-between transition-all ${
                         isBlocked 
-                          ? 'bg-rose-50/60 border-rose-200/80' 
-                          : 'bg-slate-50 border-slate-100'
+                          ? 'bg-rose-950/20 border-rose-500/30' 
+                          : 'bg-[#1D212C] border-white/5'
                       }`}
                     >
                       <div className="flex items-center justify-between">
-                        <span className="text-[13px] font-black text-slate-900 truncate">{details.name}</span>
+                        <span className="text-[13px] font-black text-white truncate">{details.name}</span>
                         {isBlocked && (
-                          <span className="text-[9px] font-black text-rose-700 bg-rose-100 px-1.5 py-0.5 rounded-md">
+                          <span className="text-[9px] font-black text-rose-300 bg-rose-500/20 px-1.5 py-0.5 rounded-md border border-rose-500/30">
                             🔒 Bloqueado
                           </span>
                         )}
                       </div>
 
-                      <span className="text-[11px] text-slate-500 font-bold mt-0.5">
+                      <span className="text-[11px] text-slate-400 font-bold mt-0.5">
                         {mainPkg.label} · ${mainPkg.packagePrice.toLocaleString()}
                       </span>
 
                       {isBlocked ? (
-                        <span className="text-[10px] font-bold text-rose-600 mt-1">
+                        <span className="text-[10px] font-bold text-rose-400 mt-1">
                           Falta liquidar: {formatCurrency(lock.pendingVal)}
                         </span>
                       ) : (
-                        <span className="text-[10px] font-bold text-emerald-600 mt-1">
+                        <span className="text-[10px] font-bold text-[#CCFF00] mt-1">
                           ✓ Al día para despacho
                         </span>
                       )}
@@ -1276,8 +1116,8 @@ export function BossDashboard() {
                         onClick={() => handleAddProductToDispatch(p.id)}
                         className={`mt-2 text-[11px] font-bold py-1.5 px-2 rounded-xl active:scale-95 transition-all ${
                           isBlocked 
-                            ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
-                            : 'bg-slate-900 text-white hover:bg-slate-800'
+                            ? 'bg-white/5 text-slate-500 cursor-not-allowed' 
+                            : 'bg-[#CCFF00] text-black font-black hover:bg-[#b8e600]'
                         }`}
                       >
                         {isBlocked ? '🔒 Bloqueado' : '+ Despachar'}
@@ -1294,10 +1134,32 @@ export function BossDashboard() {
         <div className="grid grid-cols-2 gap-3 pt-1">
           <Link 
             to="/inventory" 
-            className="flex items-center justify-between p-4 rounded-3xl bg-white border border-slate-200/80 shadow-xs hover:border-slate-400 transition-all"
+            className="flex items-center justify-between p-4 rounded-3xl bg-[#161922] border border-white/10 shadow-sm hover:border-white/20 transition-all active:scale-95"
           >
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Catálogo</span>
+              <span className="text-[14px] font-black text-white">Ver Productos</span>
+            </div>
+            <div className="size-9 rounded-full bg-white/10 flex items-center justify-center text-white">
+              <Package className="size-4" />
+            </div>
+          </Link>
+
+          <Link 
+            to="/dispatches" 
+            className="flex items-center justify-between p-4 rounded-3xl bg-[#161922] border border-white/10 shadow-sm hover:border-white/20 transition-all active:scale-95"
+          >
+            <div className="flex flex-col">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Operación</span>
+              <span className="text-[14px] font-black text-white">Despachos</span>
+            </div>
+            <div className="size-9 rounded-full bg-[#CCFF00] flex items-center justify-center text-black">
+              <ArrowRight className="size-4 stroke-[2.5]" />
+            </div>
+          </Link>
+        </div>
+
+      </div>
               <span className="text-[14px] font-black text-slate-900">Ver Productos</span>
             </div>
             <div className="size-9 rounded-full bg-slate-100 flex items-center justify-center">

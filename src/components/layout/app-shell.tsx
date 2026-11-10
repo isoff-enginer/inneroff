@@ -21,7 +21,7 @@ export function AppShell({ children, unreadCount = 0 }: AppShellProps) {
   const isChatFullscreen = location.pathname.startsWith("/messages/") && location.pathname.length > 10;
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex min-h-screen bg-[#0B0E14] text-white">
       <AppSidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         {!isCustomView && !isChatFullscreen && <AppHeader unreadCount={unreadCount} />}
